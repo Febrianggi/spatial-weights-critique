@@ -1,0 +1,9 @@
+# Python packages for the browser tests (tests/test_html_dashboard.py, tests/check_site.py).
+# Install, then download the browser Playwright drives:
+#   python -m pip install -r requirements-test.txt
+#   python -m playwright install chromium        # on Linux CI: python -m playwright install --with-deps chromium
+# Tested with Python 3.13. The R side is locked separately in renv.lock.
+playwright==1.63.0
+greenlet==3.5.6
+pyee==13.0.1
+typing_extensions==4.16.0

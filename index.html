@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FACC15'/%3E%3Cpath d='M-4 20 20-4h8L-4 28zM4 36 36 4v8L12 36z' fill='%23111827'/%3E%3C/svg%3E">
+<meta name="description" content="Columbus crime data, 32 spatial weights matrices: how much Moran's I, Geary's C and LISA change when only the definition of neighbour changes.">
+<title>When the definition of neighbour changes spatial reality</title>
+<style>
+@font-face{font-family:"Inter";font-weight:400;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:600;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-weight:700;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
+:root{--bg:#0A101C;--surface:#111B2E;--line:#22324F;--line-strong:#2E4266;--text:#E6EBF3;--muted:#A3B1C6;--faint:#8494AD;--accent:#FACC15;--accent-ink:#111827;color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(55% 60% at 85% 10%,rgba(250,204,21,.08),transparent 60%),var(--bg);color:var(--text);font:400 17px/1.65 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+html:not([data-lang="id"]) .id{display:none!important}
+html[data-lang="id"] .en{display:none!important}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+.wrap{width:100%;max-width:1040px;margin:0 auto;padding:0 24px}
+.top{display:flex;justify-content:flex-end;padding-top:20px}
+.lang{display:flex;gap:2px;padding:3px;border:1px solid var(--line-strong);border-radius:999px}
+.lang button{font:inherit;font-size:13.5px;font-weight:600;min-height:38px;min-width:44px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}
+.lang button:hover{color:var(--text)}
+.lang button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+main{flex:1}
+.kicker{font-size:15px;font-weight:600;color:var(--accent);margin:72px 0 12px}
+h1{font-size:clamp(34px,5vw,58px);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:0;max-width:17ch}
+.lead{font-size:18.5px;color:var(--muted);max-width:60ch;margin:24px 0 0}
+.tape{height:34px;margin:56px -4% 0;transform:rotate(-.6deg);background:repeating-linear-gradient(-45deg,#FACC15 0 24px,#111827 24px 48px);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.go{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:48px 0 72px}
+.go a{display:block;min-width:0;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);text-decoration:none}
+.go a:hover{border-color:var(--accent)}
+.go strong{display:block;font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+.go span.d{display:block;color:var(--muted);font-size:15.5px;line-height:1.55}
+.go .first strong{color:var(--accent)}
+footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--faint);font-size:14px}
+footer p{margin:0 0 6px}
+@media (max-width:680px){.go{grid-template-columns:minmax(0,1fr)}.kicker{margin-top:48px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="wrap top">
+<div class="lang" role="group" aria-label="Language / Bahasa"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="id" aria-pressed="false">ID</button></div>
+</div>
+<main class="wrap">
+<p class="kicker"><span class="en">A critique of Moran's I, Geary's C and LISA</span><span class="id">Kritik terhadap Moran's I, Geary's C, dan LISA</span></p>
+<h1><span class="en">When the definition of neighbour changes spatial reality</span><span class="id">Ketika definisi tetangga mengubah realitas spasial</span></h1>
+<p class="lead"><span class="en">Burglaries and vehicle thefts in the 49 neighbourhoods of Columbus, Ohio (1980), tested under 32 spatial weights matrices. The data never change; only the rule for who counts as a neighbour does.</span><span class="id">Pencurian rumah dan kendaraan di 49 lingkungan Columbus, Ohio (1980), diuji dengan 32 matriks bobot spasial. Datanya tidak pernah berubah; yang berubah hanya aturan siapa yang dihitung sebagai tetangga.</span></p>
+<div class="tape" aria-hidden="true"></div>
+<nav class="go" aria-label="Pages">
+<a class="first" id="goReport" href="reports/Columbus_Spatial_Analysis.html"><strong><span class="en">Read the report</span><span class="id">Baca laporan</span></strong><span class="d"><span class="en">The full argument for CRIME in eleven chapters: global and local tests under every matrix, the robustness simulation, and which matrix to use when nothing else is known.</span><span class="id">Argumen lengkap untuk CRIME dalam sebelas bab: uji global dan lokal pada setiap matriks, simulasi robustness, dan matriks yang dipakai bila tidak ada informasi lain.</span></span></a>
+<a id="goDash" href="dashboard_html/index.html"><strong><span class="en">Open the dashboard</span><span class="id">Buka dashboard</span></strong><span class="d"><span class="en">Pick any of the 32 matrices and see the Moran and Geary results, maps, local clusters and simulation class change with it.</span><span class="id">Pilih salah satu dari 32 matriks dan lihat hasil Moran dan Geary, peta, klaster lokal, dan kelas simulasinya ikut berubah.</span></span></a>
+</nav>
+</main>
+<footer><div class="wrap">
+<p><span class="en">Data: Anselin (1988), Table 12.1, via the GeoDa Center Columbus shapefile. Computed in R with spdep and sf.</span><span class="id">Data: Anselin (1988), Tabel 12.1, melalui shapefile Columbus dari GeoDa Center. Dihitung di R dengan spdep dan sf.</span></p>
+<p>Febrianggi Caesar Immanuel, Universitas Padjadjaran.</p>
+</div></footer>
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  function stored() { try { return localStorage.getItem("columbus-lang"); } catch (e) { return null; } }
+  function setLang(l, save) {
+    l = l === "id" ? "id" : "en";
+    root.setAttribute("data-lang", l); root.setAttribute("lang", l);
+    document.title = l === "id" ? "Ketika definisi tetangga mengubah realitas spasial" : "When the definition of neighbour changes spatial reality";
+    var bs = document.querySelectorAll(".lang button");
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute("aria-pressed", String(bs[i].getAttribute("data-lang") === l));
+    var q = "?lang=" + l;
+    document.getElementById("goReport").setAttribute("href", "reports/Columbus_Spatial_Analysis.html" + q);
+    document.getElementById("goDash").setAttribute("href", "dashboard_html/index.html" + q);
+    if (save) { try { localStorage.setItem("columbus-lang", l); } catch (e) { /* storage blocked: keep the choice for this page only */ } }
+  }
+  setLang(new URLSearchParams(location.search).get("lang") || stored() || "en", false);
+  var bs = document.querySelectorAll(".lang button");
+  for (var i = 0; i < bs.length; i++) bs[i].addEventListener("click", function () { setLang(this.getAttribute("data-lang"), true); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*_files/
+*_cache/
+.Renviron
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Test screenshots and scratch output
+tests/screenshots/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# GitHub Pages build (tests/check_site.py)
+_site/
+_serve/

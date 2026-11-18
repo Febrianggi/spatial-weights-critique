@@ -1,0 +1,33 @@
+"family","variant","param","style","id","style_label","label","order","Total link","Rata-rata tetangga","Min tetangga","Maks tetangga","Terisolasi","% non-nol","Struktur simetris","Matriks simetris","S0"
+"Contiguity","Queen",NA,"B","queen_B","Biner","Queen · B",1,236,4.81632653061224,2,10,0,9.82923781757601,TRUE,TRUE,236
+"Contiguity","Queen",NA,"W","queen_W","Row-standardized","Queen · W",2,236,4.81632653061224,2,10,0,9.82923781757601,TRUE,FALSE,49
+"Contiguity","Rook",NA,"B","rook_B","Biner","Rook · B",3,200,4.08163265306122,2,9,0,8.32986255726781,TRUE,TRUE,200
+"Contiguity","Rook",NA,"W","rook_W","Row-standardized","Rook · W",4,200,4.08163265306122,2,9,0,8.32986255726781,TRUE,FALSE,49
+"KNN","k = 2",2,"B","knn2_B","Biner","k = 2 · B",5,98,2,2,2,0,4.08163265306122,FALSE,FALSE,98
+"KNN","k = 2",2,"W","knn2_W","Row-standardized","k = 2 · W",6,98,2,2,2,0,4.08163265306122,FALSE,FALSE,49
+"KNN","k = 3",3,"B","knn3_B","Biner","k = 3 · B",7,147,3,3,3,0,6.12244897959184,FALSE,FALSE,147
+"KNN","k = 3",3,"W","knn3_W","Row-standardized","k = 3 · W",8,147,3,3,3,0,6.12244897959184,FALSE,FALSE,49
+"KNN","k = 4",4,"B","knn4_B","Biner","k = 4 · B",9,196,4,4,4,0,8.16326530612245,FALSE,FALSE,196
+"KNN","k = 4",4,"W","knn4_W","Row-standardized","k = 4 · W",10,196,4,4,4,0,8.16326530612245,FALSE,FALSE,49
+"KNN","k = 5",5,"B","knn5_B","Biner","k = 5 · B",11,245,5,5,5,0,10.2040816326531,FALSE,FALSE,245
+"KNN","k = 5",5,"W","knn5_W","Row-standardized","k = 5 · W",12,245,5,5,5,0,10.2040816326531,FALSE,FALSE,49
+"KNN","k = 6",6,"B","knn6_B","Biner","k = 6 · B",13,294,6,6,6,0,12.2448979591837,FALSE,FALSE,294
+"KNN","k = 6",6,"W","knn6_W","Row-standardized","k = 6 · W",14,294,6,6,6,0,12.2448979591837,FALSE,FALSE,49
+"KNN","k = 8",8,"B","knn8_B","Biner","k = 8 · B",15,392,8,8,8,0,16.3265306122449,FALSE,FALSE,392
+"KNN","k = 8",8,"W","knn8_W","Row-standardized","k = 8 · W",16,392,8,8,8,0,16.3265306122449,FALSE,FALSE,49
+"Distance band","d ≤ 0.62",0.62,"B","band062_B","Biner","d ≤ 0.62 · B",17,252,5.14285714285714,1,11,0,10.4956268221574,TRUE,TRUE,252
+"Distance band","d ≤ 0.62",0.62,"W","band062_W","Row-standardized","d ≤ 0.62 · W",18,252,5.14285714285714,1,11,0,10.4956268221574,TRUE,FALSE,49
+"Distance band","d ≤ 0.75",0.75,"B","band075_B","Biner","d ≤ 0.75 · B",19,346,7.06122448979592,1,14,0,14.4106622240733,TRUE,TRUE,346
+"Distance band","d ≤ 0.75",0.75,"W","band075_W","Row-standardized","d ≤ 0.75 · W",20,346,7.06122448979592,1,14,0,14.4106622240733,TRUE,FALSE,49
+"Distance band","d ≤ 0.90",0.9,"B","band090_B","Biner","d ≤ 0.90 · B",21,488,9.95918367346939,3,18,0,20.3248646397334,TRUE,TRUE,488
+"Distance band","d ≤ 0.90",0.9,"W","band090_W","Row-standardized","d ≤ 0.90 · W",22,488,9.95918367346939,3,18,0,20.3248646397334,TRUE,FALSE,49
+"Distance band","d ≤ 1.10",1.1,"B","band110_B","Biner","d ≤ 1.10 · B",23,656,13.3877551020408,3,24,0,27.3219491878384,TRUE,TRUE,656
+"Distance band","d ≤ 1.10",1.1,"W","band110_W","Row-standardized","d ≤ 1.10 · W",24,656,13.3877551020408,3,24,0,27.3219491878384,TRUE,FALSE,49
+"Distance band","d ≤ 1.35",1.35,"B","band135_B","Biner","d ≤ 1.35 · B",25,876,17.8775510204082,5,30,0,36.484798000833,TRUE,TRUE,876
+"Distance band","d ≤ 1.35",1.35,"W","band135_W","Row-standardized","d ≤ 1.35 · W",26,876,17.8775510204082,5,30,0,36.484798000833,TRUE,FALSE,49
+"Distance band","d ≤ 1.65",1.65,"B","band165_B","Biner","d ≤ 1.65 · B",27,1168,23.8367346938776,5,38,0,48.646397334444,TRUE,TRUE,1168
+"Distance band","d ≤ 1.65",1.65,"W","band165_W","Row-standardized","d ≤ 1.65 · W",28,1168,23.8367346938776,5,38,0,48.646397334444,TRUE,FALSE,49
+"Inverse distance","1/d",1,"B","idw1_B","Mentah (tanpa standardisasi)","1/d · B",29,2352,48,48,48,0,97.9591836734694,TRUE,TRUE,1995.31223951127
+"Inverse distance","1/d",1,"W","idw1_W","Row-standardized","1/d · W",30,2352,48,48,48,0,97.9591836734694,TRUE,FALSE,49
+"Inverse distance","1/d²",2,"B","idw2_B","Mentah (tanpa standardisasi)","1/d² · B",31,2352,48,48,48,0,97.9591836734694,TRUE,TRUE,2948.57690631338
+"Inverse distance","1/d²",2,"W","idw2_W","Row-standardized","1/d² · W",32,2352,48,48,48,0,97.9591836734694,TRUE,FALSE,49

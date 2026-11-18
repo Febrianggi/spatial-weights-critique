@@ -1,0 +1,193 @@
+"spec_id","var","label","order","Moran global","z_perm","HH","LL","HL","LH","Sig. (FDR)","Sig. (p mentah)","Klaster (HH+LL)","Outlier (HL+LH)","Sejalan"
+"queen_B","HOVAL","Queen · B",1,"Positif",2.84785157513381,0,0,0,0,0,5,0,0,FALSE
+"queen_B","INC","Queen · B",1,"Positif",5.1269604916142,1,1,0,0,2,14,2,0,TRUE
+"queen_B","CRIME","Queen · B",1,"Positif",6.26401445688865,4,1,0,0,5,15,5,0,TRUE
+"queen_B","OPEN","Queen · B",1,"Tidak signifikan",-0.225143614630577,0,0,0,0,0,2,0,0,TRUE
+"queen_B","PLUMB","Queen · B",1,"Positif",6.14874435208557,3,2,0,1,6,13,5,1,TRUE
+"queen_B","DISCBD","Queen · B",1,"Positif",8.73351623731475,1,6,0,2,9,19,7,2,TRUE
+"queen_W","HOVAL","Queen · W",2,"Positif",2.21232423985792,0,0,0,0,0,5,0,0,FALSE
+"queen_W","INC","Queen · W",2,"Positif",4.81303248902335,1,2,0,0,3,14,3,0,TRUE
+"queen_W","CRIME","Queen · W",2,"Positif",5.60230553071198,4,0,0,0,4,15,4,0,TRUE
+"queen_W","OPEN","Queen · W",2,"Tidak signifikan",-0.513155555899949,0,0,0,0,0,2,0,0,TRUE
+"queen_W","PLUMB","Queen · W",2,"Positif",5.31678499428623,4,3,0,1,8,13,7,1,TRUE
+"queen_W","DISCBD","Queen · W",2,"Positif",8.83021326639459,1,8,0,0,9,19,9,0,TRUE
+"rook_B","HOVAL","Rook · B",3,"Positif",2.72691492327204,0,0,0,0,0,4,0,0,FALSE
+"rook_B","INC","Rook · B",3,"Positif",4.7351071351567,2,1,0,0,3,11,3,0,TRUE
+"rook_B","CRIME","Rook · B",3,"Positif",5.68404170738825,3,0,0,0,3,12,3,0,TRUE
+"rook_B","OPEN","Rook · B",3,"Tidak signifikan",-0.478545650753655,0,0,0,0,0,0,0,0,TRUE
+"rook_B","PLUMB","Rook · B",3,"Positif",6.07086353600144,3,3,0,1,7,10,6,1,TRUE
+"rook_B","DISCBD","Rook · B",3,"Positif",8.1217046411549,2,7,0,0,9,16,9,0,TRUE
+"rook_W","HOVAL","Rook · W",4,"Positif",2.52140180698251,0,0,0,0,0,4,0,0,FALSE
+"rook_W","INC","Rook · W",4,"Positif",4.72307005229614,2,1,0,0,3,11,3,0,TRUE
+"rook_W","CRIME","Rook · W",4,"Positif",5.48010916268672,3,1,0,0,4,11,4,0,TRUE
+"rook_W","OPEN","Rook · W",4,"Tidak signifikan",-0.549273078844501,0,0,0,0,0,0,0,0,TRUE
+"rook_W","PLUMB","Rook · W",4,"Positif",5.20845686025626,3,2,0,0,5,10,5,0,TRUE
+"rook_W","DISCBD","Rook · W",4,"Positif",8.30990689947723,2,6,0,0,8,16,8,0,TRUE
+"knn2_B","HOVAL","k = 2 · B",5,"Tidak signifikan",1.6855837047,0,0,0,0,0,3,0,0,TRUE
+"knn2_B","INC","k = 2 · B",5,"Positif",3.84101958331813,0,0,0,0,0,6,0,0,FALSE
+"knn2_B","CRIME","k = 2 · B",5,"Positif",4.84031304629362,0,0,0,0,0,2,0,0,FALSE
+"knn2_B","OPEN","k = 2 · B",5,"Tidak signifikan",-0.786020118913052,0,0,0,0,0,3,0,0,TRUE
+"knn2_B","PLUMB","k = 2 · B",5,"Positif",2.64181862949717,0,0,0,0,0,3,0,0,FALSE
+"knn2_B","DISCBD","k = 2 · B",5,"Positif",6.5613637866942,0,0,0,0,0,7,0,0,FALSE
+"knn2_W","HOVAL","k = 2 · W",6,"Tidak signifikan",1.66181504592615,0,1,0,0,1,3,1,0,FALSE
+"knn2_W","INC","k = 2 · W",6,"Positif",3.8724797027342,0,0,0,0,0,6,0,0,FALSE
+"knn2_W","CRIME","k = 2 · W",6,"Positif",4.78467571435761,0,0,0,0,0,2,0,0,FALSE
+"knn2_W","OPEN","k = 2 · W",6,"Tidak signifikan",-0.806729662790288,0,0,0,0,0,3,0,0,TRUE
+"knn2_W","PLUMB","k = 2 · W",6,"Positif",2.69000067616437,0,0,0,0,0,3,0,0,FALSE
+"knn2_W","DISCBD","k = 2 · W",6,"Positif",6.35423869830449,0,0,0,0,0,7,0,0,FALSE
+"knn3_B","HOVAL","k = 3 · B",7,"Positif",2.33242428701413,0,2,0,0,2,5,2,0,TRUE
+"knn3_B","INC","k = 3 · B",7,"Positif",4.43011237819936,0,0,0,0,0,9,0,0,FALSE
+"knn3_B","CRIME","k = 3 · B",7,"Positif",5.76466974377163,0,0,0,0,0,9,0,0,FALSE
+"knn3_B","OPEN","k = 3 · B",7,"Tidak signifikan",-0.495895988809316,0,0,0,0,0,2,0,0,TRUE
+"knn3_B","PLUMB","k = 3 · B",7,"Positif",4.88071994600496,0,0,0,0,0,10,0,0,FALSE
+"knn3_B","DISCBD","k = 3 · B",7,"Positif",8.11491745371081,1,1,0,0,2,12,2,0,TRUE
+"knn3_W","HOVAL","k = 3 · W",8,"Positif",2.40523979281488,1,2,0,0,3,5,3,0,TRUE
+"knn3_W","INC","k = 3 · W",8,"Positif",4.4814868637046,0,0,0,0,0,10,0,0,FALSE
+"knn3_W","CRIME","k = 3 · W",8,"Positif",5.73906957273652,0,0,0,0,0,9,0,0,FALSE
+"knn3_W","OPEN","k = 3 · W",8,"Tidak signifikan",-0.476354396074493,0,0,0,0,0,2,0,0,TRUE
+"knn3_W","PLUMB","k = 3 · W",8,"Positif",4.80168089130262,0,0,0,0,0,10,0,0,FALSE
+"knn3_W","DISCBD","k = 3 · W",8,"Positif",7.98326250918554,1,2,0,0,3,12,3,0,TRUE
+"knn4_B","HOVAL","k = 4 · B",9,"Positif",2.53519671950875,0,1,0,0,1,9,1,0,TRUE
+"knn4_B","INC","k = 4 · B",9,"Positif",4.74250800372888,1,0,0,0,1,12,1,0,TRUE
+"knn4_B","CRIME","k = 4 · B",9,"Positif",6.60564858168784,0,0,0,0,0,20,0,0,FALSE
+"knn4_B","OPEN","k = 4 · B",9,"Tidak signifikan",-0.31794426445297,0,0,0,0,0,0,0,0,TRUE
+"knn4_B","PLUMB","k = 4 · B",9,"Positif",5.95272011111575,1,4,0,0,5,13,5,0,TRUE
+"knn4_B","DISCBD","k = 4 · B",9,"Positif",9.4809952000177,4,6,0,0,10,17,10,0,TRUE
+"knn4_W","HOVAL","k = 4 · W",10,"Positif",2.54687089565597,0,1,0,0,1,7,1,0,TRUE
+"knn4_W","INC","k = 4 · W",10,"Positif",4.744118295616,1,1,0,0,2,12,2,0,TRUE
+"knn4_W","CRIME","k = 4 · W",10,"Positif",6.65541971299122,0,0,0,0,0,21,0,0,FALSE
+"knn4_W","OPEN","k = 4 · W",10,"Tidak signifikan",-0.317844534998156,0,0,0,0,0,0,0,0,TRUE
+"knn4_W","PLUMB","k = 4 · W",10,"Positif",5.85331066884494,1,4,0,0,5,12,5,0,TRUE
+"knn4_W","DISCBD","k = 4 · W",10,"Positif",9.33973349692229,4,6,0,0,10,17,10,0,TRUE
+"knn5_B","HOVAL","k = 5 · B",11,"Positif",2.29754856439192,0,1,0,0,1,6,1,0,TRUE
+"knn5_B","INC","k = 5 · B",11,"Positif",5.70785506662869,4,3,0,0,7,13,7,0,TRUE
+"knn5_B","CRIME","k = 5 · B",11,"Positif",7.44148315510532,10,8,0,0,18,24,18,0,TRUE
+"knn5_B","OPEN","k = 5 · B",11,"Tidak signifikan",-0.418848368620664,0,0,0,0,0,1,0,0,TRUE
+"knn5_B","PLUMB","k = 5 · B",11,"Positif",6.13179012252276,2,4,0,1,7,14,6,1,TRUE
+"knn5_B","DISCBD","k = 5 · B",11,"Positif",9.90695793132449,8,11,0,0,19,23,19,0,TRUE
+"knn5_W","HOVAL","k = 5 · W",12,"Positif",2.26085415000174,0,1,0,0,1,6,1,0,TRUE
+"knn5_W","INC","k = 5 · W",12,"Positif",5.64341766333325,3,2,0,0,5,13,5,0,TRUE
+"knn5_W","CRIME","k = 5 · W",12,"Positif",7.42457856812342,10,8,0,0,18,24,18,0,TRUE
+"knn5_W","OPEN","k = 5 · W",12,"Tidak signifikan",-0.442892125912549,0,0,0,0,0,1,0,0,TRUE
+"knn5_W","PLUMB","k = 5 · W",12,"Positif",6.05310072694358,2,3,0,1,6,14,5,1,TRUE
+"knn5_W","DISCBD","k = 5 · W",12,"Positif",9.82821519882536,8,10,0,0,18,24,18,0,TRUE
+"knn6_B","HOVAL","k = 6 · B",13,"Tidak signifikan",2.05080241572567,0,0,0,0,0,8,0,0,TRUE
+"knn6_B","INC","k = 6 · B",13,"Positif",5.80468154170392,4,3,0,0,7,18,7,0,TRUE
+"knn6_B","CRIME","k = 6 · B",13,"Positif",7.55681773065998,12,0,0,0,12,25,12,0,TRUE
+"knn6_B","OPEN","k = 6 · B",13,"Tidak signifikan",-0.765525593668955,0,0,0,0,0,0,0,0,TRUE
+"knn6_B","PLUMB","k = 6 · B",13,"Positif",6.26436214266027,2,2,0,1,5,12,4,1,TRUE
+"knn6_B","DISCBD","k = 6 · B",13,"Positif",9.89173799268078,4,11,0,0,15,21,15,0,TRUE
+"knn6_W","HOVAL","k = 6 · W",14,"Tidak signifikan",2.06096019510351,0,0,0,0,0,8,0,0,TRUE
+"knn6_W","INC","k = 6 · W",14,"Positif",5.85667273453028,4,4,0,0,8,18,8,0,TRUE
+"knn6_W","CRIME","k = 6 · W",14,"Positif",7.48795569471287,12,0,0,0,12,26,12,0,TRUE
+"knn6_W","OPEN","k = 6 · W",14,"Tidak signifikan",-0.763303563633312,0,0,0,0,0,0,0,0,TRUE
+"knn6_W","PLUMB","k = 6 · W",14,"Positif",6.24076703874046,2,2,0,1,5,13,4,1,TRUE
+"knn6_W","DISCBD","k = 6 · W",14,"Positif",9.79509603904999,4,11,0,0,15,21,15,0,TRUE
+"knn8_B","HOVAL","k = 8 · B",15,"Positif",2.69236612843823,0,0,0,0,0,6,0,0,FALSE
+"knn8_B","INC","k = 8 · B",15,"Positif",5.42264832640836,2,5,0,0,7,20,7,0,TRUE
+"knn8_B","CRIME","k = 8 · B",15,"Positif",6.8870704965263,12,1,0,0,13,15,13,0,TRUE
+"knn8_B","OPEN","k = 8 · B",15,"Tidak signifikan",-1.36591644775124,0,0,0,0,0,1,0,0,TRUE
+"knn8_B","PLUMB","k = 8 · B",15,"Positif",6.43903714820184,8,3,0,1,12,14,11,1,TRUE
+"knn8_B","DISCBD","k = 8 · B",15,"Positif",9.65319651239843,5,16,0,0,21,22,21,0,TRUE
+"knn8_W","HOVAL","k = 8 · W",16,"Positif",2.67299287770709,0,0,0,0,0,6,0,0,FALSE
+"knn8_W","INC","k = 8 · W",16,"Positif",5.51352189057479,4,10,0,0,14,20,14,0,TRUE
+"knn8_W","CRIME","k = 8 · W",16,"Positif",6.97476532430756,12,1,0,0,13,16,13,0,TRUE
+"knn8_W","OPEN","k = 8 · W",16,"Tidak signifikan",-1.36939461671322,0,0,0,0,0,1,0,0,TRUE
+"knn8_W","PLUMB","k = 8 · W",16,"Positif",6.54191195004433,8,3,0,1,12,14,11,1,TRUE
+"knn8_W","DISCBD","k = 8 · W",16,"Positif",9.59784552423017,5,16,0,0,21,22,21,0,TRUE
+"band062_B","HOVAL","d ≤ 0.62 · B",17,"Tidak signifikan",1.92587545071643,0,0,0,0,0,7,0,0,TRUE
+"band062_B","INC","d ≤ 0.62 · B",17,"Positif",4.8547233057422,1,3,0,8,12,16,4,8,FALSE
+"band062_B","CRIME","d ≤ 0.62 · B",17,"Positif",7.58003168988933,11,0,0,0,11,16,11,0,TRUE
+"band062_B","OPEN","d ≤ 0.62 · B",17,"Tidak signifikan",-1.25344923897431,0,0,0,0,0,1,0,0,TRUE
+"band062_B","PLUMB","d ≤ 0.62 · B",17,"Positif",6.62698559176156,6,2,0,0,8,11,8,0,TRUE
+"band062_B","DISCBD","d ≤ 0.62 · B",17,"Positif",9.361780108247,3,8,0,5,16,22,11,5,TRUE
+"band062_W","HOVAL","d ≤ 0.62 · W",18,"Tidak signifikan",1.10523951604255,0,0,0,0,0,7,0,0,TRUE
+"band062_W","INC","d ≤ 0.62 · W",18,"Positif",4.17545210524464,1,11,0,0,12,17,12,0,TRUE
+"band062_W","CRIME","d ≤ 0.62 · W",18,"Positif",5.60486548272384,11,0,0,0,11,16,11,0,TRUE
+"band062_W","OPEN","d ≤ 0.62 · W",18,"Tidak signifikan",-0.458234822545177,0,0,0,0,0,1,0,0,TRUE
+"band062_W","PLUMB","d ≤ 0.62 · W",18,"Positif",4.26998889016667,4,2,0,0,6,11,6,0,TRUE
+"band062_W","DISCBD","d ≤ 0.62 · W",18,"Positif",8.66648242506355,2,13,0,0,15,22,15,0,TRUE
+"band075_B","HOVAL","d ≤ 0.75 · B",19,"Tidak signifikan",2.20649220605744,0,0,0,0,0,11,0,0,TRUE
+"band075_B","INC","d ≤ 0.75 · B",19,"Positif",6.02815715338853,1,1,1,11,14,20,2,12,FALSE
+"band075_B","CRIME","d ≤ 0.75 · B",19,"Positif",8.26661689886507,12,2,0,1,15,20,14,1,TRUE
+"band075_B","OPEN","d ≤ 0.75 · B",19,"Tidak signifikan",-0.9988750463489,0,0,0,0,0,1,0,0,TRUE
+"band075_B","PLUMB","d ≤ 0.75 · B",19,"Positif",7.3905279229202,9,4,0,2,15,20,13,2,TRUE
+"band075_B","DISCBD","d ≤ 0.75 · B",19,"Positif",11.1951111932118,2,4,2,13,21,24,6,15,FALSE
+"band075_W","HOVAL","d ≤ 0.75 · W",20,"Tidak signifikan",1.71874994530937,0,0,0,0,0,12,0,0,TRUE
+"band075_W","INC","d ≤ 0.75 · W",20,"Positif",5.28809635566485,2,12,0,0,14,20,14,0,TRUE
+"band075_W","CRIME","d ≤ 0.75 · W",20,"Positif",6.26090571625748,12,2,0,1,15,20,14,1,TRUE
+"band075_W","OPEN","d ≤ 0.75 · W",20,"Tidak signifikan",-0.513534918382467,0,0,0,0,0,1,0,0,TRUE
+"band075_W","PLUMB","d ≤ 0.75 · W",20,"Positif",4.83601842350727,9,3,0,2,14,19,12,2,TRUE
+"band075_W","DISCBD","d ≤ 0.75 · W",20,"Positif",9.64066338370816,4,17,0,0,21,23,21,0,TRUE
+"band090_B","HOVAL","d ≤ 0.90 · B",21,"Positif",3.17246852725782,0,0,0,1,1,10,0,1,FALSE
+"band090_B","INC","d ≤ 0.90 · B",21,"Positif",7.74673159511224,2,2,3,14,21,22,4,17,FALSE
+"band090_B","CRIME","d ≤ 0.90 · B",21,"Positif",8.95335581518001,15,7,0,1,23,27,22,1,TRUE
+"band090_B","OPEN","d ≤ 0.90 · B",21,"Negatif",-1.7039656302823,0,0,0,0,0,1,0,0,FALSE
+"band090_B","PLUMB","d ≤ 0.90 · B",21,"Positif",6.83865715662311,11,6,0,3,20,23,17,3,TRUE
+"band090_B","DISCBD","d ≤ 0.90 · B",21,"Positif",12.9266183175049,3,8,7,13,31,32,11,20,FALSE
+"band090_W","HOVAL","d ≤ 0.90 · W",22,"Positif",2.38842428060032,0,0,0,0,0,10,0,0,FALSE
+"band090_W","INC","d ≤ 0.90 · W",22,"Positif",6.74827390953947,5,17,0,0,22,22,22,0,TRUE
+"band090_W","CRIME","d ≤ 0.90 · W",22,"Positif",7.30153524629015,14,6,0,1,21,27,20,1,TRUE
+"band090_W","OPEN","d ≤ 0.90 · W",22,"Tidak signifikan",-0.959296366068754,0,0,0,0,0,1,0,0,TRUE
+"band090_W","PLUMB","d ≤ 0.90 · W",22,"Positif",5.05389076475643,11,6,0,3,20,23,17,3,TRUE
+"band090_W","DISCBD","d ≤ 0.90 · W",22,"Positif",11.7238532235323,10,21,0,0,31,32,31,0,TRUE
+"band110_B","HOVAL","d ≤ 1.10 · B",23,"Positif",2.98212781831256,0,0,0,2,2,13,0,2,FALSE
+"band110_B","INC","d ≤ 1.10 · B",23,"Positif",7.09360208679539,1,3,4,13,21,22,4,17,FALSE
+"band110_B","CRIME","d ≤ 1.10 · B",23,"Positif",9.2748115978048,16,4,0,2,22,28,20,2,TRUE
+"band110_B","OPEN","d ≤ 1.10 · B",23,"Tidak signifikan",-1.49804225399485,0,0,0,0,0,1,0,0,TRUE
+"band110_B","PLUMB","d ≤ 1.10 · B",23,"Positif",5.87648726095815,10,4,0,4,18,25,14,4,TRUE
+"band110_B","DISCBD","d ≤ 1.10 · B",23,"Positif",13.4334939612208,1,10,4,12,27,31,11,16,FALSE
+"band110_W","HOVAL","d ≤ 1.10 · W",24,"Tidak signifikan",1.99216872356927,0,3,0,0,3,14,3,0,FALSE
+"band110_W","INC","d ≤ 1.10 · W",24,"Positif",6.48805365904347,4,16,1,0,21,22,20,1,TRUE
+"band110_W","CRIME","d ≤ 1.10 · W",24,"Positif",7.20320935425226,15,4,0,2,21,28,19,2,TRUE
+"band110_W","OPEN","d ≤ 1.10 · W",24,"Tidak signifikan",-0.818894347628408,0,0,0,0,0,1,0,0,TRUE
+"band110_W","PLUMB","d ≤ 1.10 · W",24,"Positif",4.47496333440489,10,3,0,4,17,24,13,4,TRUE
+"band110_W","DISCBD","d ≤ 1.10 · W",24,"Positif",11.4705051250486,4,22,0,0,26,31,26,0,TRUE
+"band135_B","HOVAL","d ≤ 1.35 · B",25,"Positif",2.49584616805952,1,0,1,2,4,12,1,3,FALSE
+"band135_B","INC","d ≤ 1.35 · B",25,"Positif",6.62513439201884,2,4,3,12,21,25,6,15,FALSE
+"band135_B","CRIME","d ≤ 1.35 · B",25,"Positif",8.80076360129537,16,3,0,3,22,32,19,3,TRUE
+"band135_B","OPEN","d ≤ 1.35 · B",25,"Tidak signifikan",-0.902886487704862,0,0,0,0,0,0,0,0,TRUE
+"band135_B","PLUMB","d ≤ 1.35 · B",25,"Positif",5.10325078694981,12,8,0,6,26,29,20,6,TRUE
+"band135_B","DISCBD","d ≤ 1.35 · B",25,"Positif",13.8612363767195,3,8,3,14,28,32,11,17,FALSE
+"band135_W","HOVAL","d ≤ 1.35 · W",26,"Tidak signifikan",1.50492773418836,0,2,2,0,4,11,2,2,FALSE
+"band135_W","INC","d ≤ 1.35 · W",26,"Positif",5.43832532990284,2,16,3,0,21,25,18,3,TRUE
+"band135_W","CRIME","d ≤ 1.35 · W",26,"Positif",7.01342842068713,16,2,0,4,22,32,18,4,TRUE
+"band135_W","OPEN","d ≤ 1.35 · W",26,"Tidak signifikan",-0.539424554665133,0,0,0,0,0,0,0,0,TRUE
+"band135_W","PLUMB","d ≤ 1.35 · W",26,"Positif",4.0775058685821,12,8,0,6,26,29,20,6,TRUE
+"band135_W","DISCBD","d ≤ 1.35 · W",26,"Positif",11.5563737312626,4,22,2,0,28,32,26,2,TRUE
+"band165_B","HOVAL","d ≤ 1.65 · B",27,"Tidak signifikan",1.29057199685713,2,1,0,1,4,12,3,1,FALSE
+"band165_B","INC","d ≤ 1.65 · B",27,"Positif",6.89830153508576,2,4,3,14,23,26,6,17,FALSE
+"band165_B","CRIME","d ≤ 1.65 · B",27,"Positif",7.88095238988114,22,4,0,4,30,32,26,4,TRUE
+"band165_B","OPEN","d ≤ 1.65 · B",27,"Tidak signifikan",-0.932668749920167,0,0,0,0,0,0,0,0,TRUE
+"band165_B","PLUMB","d ≤ 1.65 · B",27,"Positif",3.08873828773301,15,8,0,10,33,34,23,10,TRUE
+"band165_B","DISCBD","d ≤ 1.65 · B",27,"Positif",12.950678106534,1,5,2,20,28,31,6,22,FALSE
+"band165_W","HOVAL","d ≤ 1.65 · W",28,"Tidak signifikan",0.449527793356431,0,3,2,0,5,12,3,2,FALSE
+"band165_W","INC","d ≤ 1.65 · W",28,"Positif",5.53023092476396,1,18,4,0,23,25,19,4,TRUE
+"band165_W","CRIME","d ≤ 1.65 · W",28,"Positif",6.16477298279159,22,3,0,5,30,32,25,5,TRUE
+"band165_W","OPEN","d ≤ 1.65 · W",28,"Tidak signifikan",-0.40927078435487,0,0,0,0,0,0,0,0,TRUE
+"band165_W","PLUMB","d ≤ 1.65 · W",28,"Positif",2.46789695528319,15,7,0,11,33,34,22,11,TRUE
+"band165_W","DISCBD","d ≤ 1.65 · W",28,"Positif",9.91791270159687,1,25,2,0,28,31,26,2,TRUE
+"idw1_B","HOVAL","1/d · B",29,"Positif",2.58667229046003,1,0,0,5,6,14,1,5,FALSE
+"idw1_B","INC","1/d · B",29,"Positif",6.4399811143114,0,4,6,14,24,25,4,20,FALSE
+"idw1_B","CRIME","1/d · B",29,"Positif",9.03540963897864,17,1,1,2,21,21,18,3,TRUE
+"idw1_B","OPEN","1/d · B",29,"Negatif",-2.10971616415319,0,0,0,0,0,1,0,0,FALSE
+"idw1_B","PLUMB","1/d · B",29,"Positif",6.86677251749895,6,0,0,1,7,11,6,1,TRUE
+"idw1_B","DISCBD","1/d · B",29,"Positif",11.4433631015474,0,2,1,19,22,27,2,20,FALSE
+"idw1_W","HOVAL","1/d · W",30,"Tidak signifikan",2.12982819492921,0,5,1,0,6,12,5,1,FALSE
+"idw1_W","INC","1/d · W",30,"Positif",6.08095110882415,3,18,4,0,25,25,21,4,TRUE
+"idw1_W","CRIME","1/d · W",30,"Positif",7.81514658894019,18,0,0,3,21,21,18,3,TRUE
+"idw1_W","OPEN","1/d · W",30,"Negatif",-1.63101767436684,0,0,0,0,0,1,0,0,FALSE
+"idw1_W","PLUMB","1/d · W",30,"Positif",6.24644607206701,6,0,0,1,7,11,6,1,TRUE
+"idw1_W","DISCBD","1/d · W",30,"Positif",10.6750733375391,1,21,0,0,22,28,22,0,TRUE
+"idw2_B","HOVAL","1/d² · B",31,"Tidak signifikan",1.91238053927553,0,0,1,5,6,7,0,6,FALSE
+"idw2_B","INC","1/d² · B",31,"Positif",4.45128963164109,0,3,2,5,10,23,3,7,FALSE
+"idw2_B","CRIME","1/d² · B",31,"Positif",7.08405222924375,13,1,1,0,15,19,14,1,TRUE
+"idw2_B","OPEN","1/d² · B",31,"Negatif",-2.01106118079464,0,0,0,0,0,2,0,0,FALSE
+"idw2_B","PLUMB","1/d² · B",31,"Positif",5.66750742510108,1,3,0,0,4,12,4,0,TRUE
+"idw2_B","DISCBD","1/d² · B",31,"Positif",7.4615093375621,0,6,5,7,18,22,6,12,FALSE
+"idw2_W","HOVAL","1/d² · W",32,"Tidak signifikan",1.9245322391174,0,4,1,0,5,7,4,1,FALSE
+"idw2_W","INC","1/d² · W",32,"Positif",4.71224567747813,1,7,1,0,9,23,8,1,TRUE
+"idw2_W","CRIME","1/d² · W",32,"Positif",6.76943635401755,14,0,0,0,14,19,14,0,TRUE
+"idw2_W","OPEN","1/d² · W",32,"Negatif",-1.58144663147868,0,0,0,0,0,2,0,0,FALSE
+"idw2_W","PLUMB","1/d² · W",32,"Positif",5.42208248830186,1,0,0,1,2,13,1,1,TRUE
+"idw2_W","DISCBD","1/d² · W",32,"Positif",9.49409411621489,5,13,0,0,18,22,18,0,TRUE

@@ -1,0 +1,13 @@
+"var","index","p min","W dgn p min","p maks","W dgn p maks","% W signifikan","Kesimpulan bisa dipilih"
+"CRIME","Geary's C",2e-04,"Queen · B",0.0156,"d ≤ 1.65 · B",100,FALSE
+"CRIME","Moran's I",2e-04,"Queen · B",4e-04,"d ≤ 1.35 · W",100,FALSE
+"DISCBD","Geary's C",2e-04,"Queen · B",2e-04,"Queen · B",100,FALSE
+"DISCBD","Moran's I",2e-04,"Queen · B",2e-04,"Queen · B",100,FALSE
+"HOVAL","Geary's C",0.006,"k = 2 · W",0.366,"d ≤ 1.65 · B",59.375,TRUE
+"HOVAL","Moran's I",0.0124,"Queen · B",0.557,"d ≤ 1.65 · W",53.125,TRUE
+"INC","Geary's C",2e-04,"k = 2 · B",0.0312,"d ≤ 1.65 · B",100,FALSE
+"INC","Moran's I",2e-04,"Queen · B",0.0024,"1/d² · B",100,FALSE
+"OPEN","Geary's C",0.0092,"1/d² · W",0.9696,"d ≤ 0.75 · W",9.375,TRUE
+"OPEN","Moran's I",0.009,"1/d · B",0.9072,"Queen · B",15.625,TRUE
+"PLUMB","Geary's C",2e-04,"k = 4 · B",0.9934,"d ≤ 0.75 · B",50,TRUE
+"PLUMB","Moran's I",2e-04,"Queen · B",0.049,"k = 2 · B",100,FALSE

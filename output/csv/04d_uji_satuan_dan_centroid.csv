@@ -1,0 +1,5 @@
+"Uji","Nilai"
+"Maks |ΔI| setelah skala jarak dikali faktor X/Y","8.88e-16"
+"Maks |ΔC| setelah skala jarak dikali faktor X/Y","1.33e-15"
+"KNN: % tetangga sama (centroid geometri vs titik X/Y), min–maks","87.8 – 93.9"
+"KNN: maks |ΔI| akibat pilihan titik","0.0655"

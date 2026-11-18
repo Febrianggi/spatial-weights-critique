@@ -1,0 +1,896 @@
+---
+pagetitle: "When the definition of neighbour changes spatial reality"
+output:
+  html_document:
+    template: report_assets/template.html
+    theme: null
+    highlight: null
+    mathjax: null
+    self_contained: true
+    css: report_assets/report.css
+    includes:
+      after_body: report_assets/report.js
+    pandoc_args: ["--mathml"]
+knit: (function(input, ...) rmarkdown::render(input, output_dir = "reports", envir = globalenv()))
+---
+
+<!--
+Knit this file (RStudio: Knit, or rmarkdown::render("Columbus_Spatial_Analysis.Rmd", output_dir = "reports")).
+1. analysis/core.Rmd runs the whole study (6 variables x 32 weights matrices) and writes output/ and the dashboard.
+2. analysis/simulation.Rmd runs the robustness simulation for CRIME.
+3. The rest of this file only displays CRIME results, in English and Indonesian, from the objects built in 1 and 2.
+-->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, include = FALSE, fig.path = file.path(tempdir(), "fig-"))
+# run the analysis/ children from the project folder, so data/ and output/ paths resolve
+knitr::opts_knit$set(root.dir = normalizePath("."))
+```
+
+```{r core, child = "analysis/core.Rmd"}
+```
+
+```{r simulation, child = "analysis/simulation.Rmd"}
+```
+
+```{r helpers}
+knitr::opts_chunk$set(include = TRUE, results = "asis")
+source("analysis/report_helpers.R")
+```
+
+```{r facts, include = FALSE}
+# Every number quoted in the text below is taken from here.
+lE <- function(id) spec_lab(id, "en"); lI <- function(id) spec_lab(id, "id")
+gC <- glob |> filter(var == "CRIME")
+gM <- filter(gC, index == "Moran's I") |> arrange(order); gG <- filter(gC, index == "Geary's C") |> arrange(order)
+rM <- gM[gM$spec_id == REF, ]; rG <- gG[gG$spec_id == REF, ]
+I_lo <- gM$spec_id[which.min(gM$stat)]; I_hi <- gM$spec_id[which.max(gM$stat)]
+C_lo <- gG$spec_id[which.min(gG$stat)]; C_hi <- gG$spec_id[which.max(gG$stat)]
+sigM <- sum(gM$signif); sigG <- sum(gG$signif); n_neg <- sum(gC$conclusion == "Negatif")
+dC <- desc[desc$Variabel == "CRIME", ]
+aC <- agree |> filter(var == "CRIME"); n_agree <- sum(aC$M == aC$G)
+only_M <- sum(aC$kategori == "Hanya Moran signifikan"); only_G <- sum(aC$kategori == "Hanya Geary signifikan")
+jkC <- jk_summ |> filter(var == "CRIME"); jkR <- jkC |> filter(ref == REF)
+jk_flip <- sum(jkC$`Penghapusan yang mengubah signifikansi`)
+rkC <- rank_summ |> filter(var == "CRIME"); stC <- std_summ |> filter(var == "CRIME")
+lsC <- lisa_summ |> filter(var == "CRIME") |> arrange(order)
+fdr <- setNames(lsC$`Sig. (FDR)`, lsC$spec_id); raw_n <- setNames(lsC$`Sig. (p mentah)`, lsC$spec_id)
+fdr_hi <- names(fdr)[which.max(fdr)]; n_zero <- sum(fdr == 0)
+lC <- lisa |> filter(var == "CRIME")
+ref_sig <- lC |> filter(spec_id == REF, class_fdr != "NS") |> arrange(POLYID)
+hh_ref <- ref_sig$POLYID[ref_sig$class_fdr == "HH"]
+crR <- cr; raw_ref <- sum(crR$p < ALPHA)
+stabC <- region_stab |> filter(var == "CRIME")
+ever_sig <- lC |> group_by(POLYID) |> summarise(k = sum(class_fdr != "NS"), .groups = "drop")
+n_ever <- sum(ever_sig$k > 0); n_always <- sum(ever_sig$k == nrow(specs))
+lsupC <- loc_sup |> filter(var == "CRIME")
+gi_hot <- lsupC$POLYID[lsupC$Gi_class == "Hot spot"]; gi_cold <- lsupC$POLYID[lsupC$Gi_class == "Cold spot"]
+lc_sig <- sum(lsupC$localC_class != "Tidak signifikan")
+glC <- gl |> filter(var == "CRIME"); gl_pct <- 100 * mean(glC$Sejalan)
+min_same <- min(lsC$`Sama dgn acuan, FDR (%)`); min_same_w <- lsC$spec_id[which.min(lsC$`Sama dgn acuan, FDR (%)`)]
+ssC <- glob |> filter(var == "CRIME") |> group_by(index) |> summarise(pmin = min(p_two), wmin = spec_id[which.min(p_two)],
+  pmax = max(p_two), wmax = spec_id[which.max(p_two)], pct = 100 * mean(signif), .groups = "drop")
+# simulation
+rcr <- crit[crit$W == rec_id, ]; rcC <- crit[crit$W == rec_C, ]; qW <- crit[crit$W == REF, ]
+worst <- crit$W[which.max(crit$`K3 penyesalan maks Moran`)]
+rob_ids <- crit$W[crit$Kelas == "Robust"]; mid_ids <- crit$W[crit$Kelas == "Menengah"]; sen_ids <- crit$W[crit$Kelas == "Sensitif"]
+k1_bad <- crit$W[crit$`K1 Moran` == "Tidak wajar"]; k1C_bad <- crit$W[crit$`K1 Geary` == "Tidak wajar"]
+rbR <- lab_to_id(both_rob); rbS <- lab_to_id(both_sen); rjI <- lab_to_id(rec_J$Spesifikasi)
+mono_ok <- all(v2$`Monoton naik`); agree_perm <- median(c(v1[[4]], v1[[7]]))
+```
+
+<meta name="title-en" content="When the definition of neighbour changes spatial reality">
+<meta name="title-id" content="Ketika definisi tetangga mengubah realitas spasial">
+<a class="skip" href="#main"><span class="en">Skip to the report</span><span class="id">Langsung ke laporan</span></a>
+<div id="bgfx" aria-hidden="true"></div>
+
+<div class="topbar"><div class="wrap">
+<a class="brand" href="#top"><i class="mark" aria-hidden="true"></i><span>Columbus CRIME</span></a>
+<span class="spacer"></span>
+<a class="dash" href="../dashboard_html/index.html"><span class="en">Interactive dashboard</span><span class="id">Dashboard interaktif</span></a>
+<div class="lang" role="group" aria-label="Language / Bahasa"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="id" aria-pressed="false">ID</button></div>
+</div></div>
+
+```{r hero}
+hot <- lC |> filter(spec_id == REF, class_fdr == "HH") |> arrange(POLYID)
+if (!nrow(hot)) hot <- lC |> filter(spec_id == REF) |> arrange(desc(Ii)) |> head(4)
+hot <- head(hot, 5)
+Wv <- 600; H <- 340; base <- 330; nH <- max(nrow(hot), 1); gap <- Wv / (nH + 0.6)
+stand <- function(fill) sprintf('<circle cx="50" cy="34" r="19" fill="%s"/><path fill="%s" d="M50 56 C40 56 35 59 33 63 L16 70 C8 74 4 82 4 96 L4 250 L96 250 L96 96 C96 82 92 74 84 70 L67 63 C65 59 60 56 50 56 Z"/>', fill, fill)
+rows <- vapply(0:10, function(k) { cm <- 200 - 5 * k; y <- 26 + k * 29; major <- cm %% 10 == 0
+  paste0(sprintf('<line x1="0" x2="%d" y1="%d" y2="%d" stroke="#C7D2E3" stroke-opacity="%s" stroke-width="%s"/>', Wv - 46, y, y, if (major) ".2" else ".08", if (major) 2 else 1),
+         if (major) sprintf('<text x="%d" y="%d" text-anchor="end" fill="#C7D2E3" fill-opacity=".55" font-size="15" font-weight="600" font-family="Inter,sans-serif">%d</text>', Wv - 4, y + 5, cm) else "") }, "") |> paste(collapse = "")
+figs <- vapply(seq_len(nrow(hot)), function(i) {
+  sc <- c(1, .94, 1.04, .97, 1.01)[(i - 1) %% 5 + 1]; x <- gap * (i - 1 + 0.8) - 50 * sc; y <- base - 250 * sc
+  sprintf('<g transform="translate(%.1f,%.1f) scale(%.2f)">%s<rect x="8" y="126" width="84" height="50" rx="3" fill="#E6EBF3"/><circle cx="8" cy="151" r="7" fill="#04070D"/><circle cx="92" cy="151" r="7" fill="#04070D"/><text x="50" y="146" text-anchor="middle" font-size="12.5" font-weight="800" fill="#111827" font-family="Inter,sans-serif">POLYID %d</text><text x="50" y="165" text-anchor="middle" font-size="11" font-weight="600" fill="#334155" font-family="Inter,sans-serif">CRIME %s</text></g>',
+          x, y, sc, stand("#04070D"), hot$POLYID[i], FE(col$CRIME[hot$POLYID[i]], 1))
+}, "") |> paste(collapse = "")
+ids_txt <- paste(hot$POLYID, collapse = ", ")
+cat(sprintf('<header class="hero" id="top"><div class="wrap hero-grid"><div class="intro">
+<p class="kicker"><span class="en">A critique of Moran\'s I, Geary\'s C and LISA</span><span class="id">Kritik terhadap Moran\'s I, Geary\'s C, dan LISA</span></p>
+<h1><span class="en">When the definition of neighbour changes spatial reality</span><span class="id">Ketika definisi tetangga mengubah realitas spasial</span></h1>
+<p class="lead"><span class="en">Burglaries and vehicle thefts in the 49 neighbourhoods of Columbus, Ohio (1980). The data never change. Only the rule for who counts as a neighbour changes, %d times. This report measures how much the answer moves, and which rule to use when nothing else is known.</span><span class="id">Pencurian rumah dan kendaraan di 49 lingkungan Columbus, Ohio (1980). Datanya tidak pernah berubah. Yang berubah hanya aturan siapa yang dihitung sebagai tetangga, sebanyak %d kali. Laporan ini mengukur seberapa jauh jawabannya bergeser, dan aturan mana yang dipakai bila tidak ada informasi lain.</span></p>
+<p class="byline"><b>Febrianggi Caesar Immanuel</b> <span class="en">Statistics, Universitas Padjadjaran.</span><span class="id">Statistika, Universitas Padjadjaran.</span> <span class="en">Knitted %s.</span><span class="id">Di-knit %s.</span></p>
+</div><div class="lineup" role="img" aria-label="Line-up of CRIME hot spot neighbourhoods, POLYID %s"><svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMax meet" aria-hidden="true">%s%s</svg><p class="cap"><span class="en">The line-up: %d neighbourhoods that LISA flags as High-High under %s (FDR 5%%)</span><span class="id">Barisan ini: %d lingkungan yang ditandai LISA sebagai High-High dengan %s (FDR 5%%)</span></p></div></div>
+<div class="tape-wrap" aria-hidden="true"><div class="tape"><span><span class="en">POLICE LINE &#183; DO NOT CROSS &#183; POLICE LINE &#183; DO NOT CROSS</span><span class="id">POLICE LINE &#183; DILARANG MELINTAS &#183; POLICE LINE &#183; DILARANG MELINTAS</span></span></div></div></header>\n',
+  nrow(specs), nrow(specs), format(Sys.Date(), "%Y-%m-%d"), format(Sys.Date(), "%d-%m-%Y"), ids_txt, Wv, H, rows, figs,
+  nrow(hot), lE(REF), nrow(hot), lI(REF)))
+```
+
+<div class="wrap layout">
+<nav class="toc" aria-label="Contents">
+<p><span class="en">Case file</span><span class="id">Berkas perkara</span></p>
+<ol>
+<li><a href="#why"><span class="en">Why this report exists</span><span class="id">Mengapa laporan ini dibuat</span></a></li>
+<li><a href="#data"><span class="en">The data</span><span class="id">Data</span></a></li>
+<li><a href="#matrices"><span class="en">32 definitions of neighbour</span><span class="id">32 definisi tetangga</span></a></li>
+<li><a href="#global"><span class="en">Global tests</span><span class="id">Uji global</span></a></li>
+<li><a href="#agreement"><span class="en">Moran versus Geary</span><span class="id">Moran versus Geary</span></a></li>
+<li><a href="#influence"><span class="en">One neighbourhood</span><span class="id">Satu lingkungan</span></a></li>
+<li><a href="#local"><span class="en">Local clusters</span><span class="id">Klaster lokal</span></a></li>
+<li><a href="#simulation"><span class="en">Which matrix to trust</span><span class="id">Matriks mana yang dipercaya</span></a></li>
+<li><a href="#practice"><span class="en">What to do instead</span><span class="id">Yang sebaiknya dilakukan</span></a></li>
+<li><a href="#limits"><span class="en">Limits</span><span class="id">Keterbatasan</span></a></li>
+<li><a href="#repro"><span class="en">Reproduce and references</span><span class="id">Reproduksi dan referensi</span></a></li>
+</ol>
+</nav>
+<main id="main">
+
+<section class="chap" id="why">
+<h2><span class="en">Why this report exists</span><span class="id">Mengapa laporan ini dibuat</span></h2>
+
+::: en
+[Moran's I, Geary's C and LISA cluster maps are easy to compute and easy to misuse. Each of them needs a spatial weights matrix $W$: a rule that says which areas are neighbours and how much each neighbour counts. The analyst chooses that rule, and the software accepts any choice. When $W$ is picked after the output has been seen, the reported result says as much about the search as about the data. This is called specification searching.]{.lede}
+
+This report is a critique, not a showcase. The data stay fixed (CRIME in Columbus) and only $W$ changes, `r nrow(specs)` times. The question is not "is crime clustered?" but "how much of the answer is made by the definition of neighbour?".
+:::
+
+::: id
+[Moran's I, Geary's C, dan peta klaster LISA mudah dihitung dan mudah disalahgunakan. Semuanya membutuhkan matriks bobot spasial $W$: aturan yang menentukan wilayah mana yang bertetangga dan seberapa besar bobot tiap tetangga. Aturan itu dipilih oleh analis, dan perangkat lunak menerima pilihan apa pun. Bila $W$ dipilih setelah hasilnya terlihat, hasil yang dilaporkan lebih banyak bercerita tentang proses pencarian daripada tentang data. Praktik ini disebut *specification searching*.]{.lede}
+
+Laporan ini adalah kritik, bukan etalase. Datanya tetap (CRIME di Columbus) dan hanya $W$ yang diganti, sebanyak `r nrow(specs)` kali. Pertanyaannya bukan "apakah kejahatan mengelompok?", melainkan "seberapa besar jawaban itu dibentuk oleh definisi tetangga?".
+:::
+
+```{r markers}
+tent <- function(k) sprintf('<svg class="tent" viewBox="0 0 34 28" aria-hidden="true"><path d="M17 1 L33 27 L1 27 Z" fill="#FACC15" stroke="#111827" stroke-width="1.5"/><text x="17" y="23" text-anchor="middle" font-size="12" font-weight="800" fill="#111827" font-family="Inter,sans-serif">%d</text></svg>', k)
+mk <- function(k, big_en, big_id, en, id) sprintf('<div class="marker">%s<span class="big"><span class="en">%s</span><span class="id">%s</span></span><p><span class="en">%s</span><span class="id">%s</span></p></div>', tent(k), big_en, big_id, en, id)
+cat('<div class="markers">',
+  mk(1, paste0(FE(min(gM$stat)), " to ", FE(max(gM$stat))), paste0(FI(min(gM$stat)), " s.d. ", FI(max(gM$stat))),
+     sprintf("Moran's I for the same CRIME values, depending only on W (lowest under %s, highest under %s).", lE(I_lo), lE(I_hi)),
+     sprintf("Moran's I untuk nilai CRIME yang sama, hanya bergantung pada W (terendah pada %s, tertinggi pada %s).", lI(I_lo), lI(I_hi))),
+  mk(2, paste0(min(fdr), " to ", max(fdr)), paste0(min(fdr), " s.d. ", max(fdr)),
+     sprintf("Neighbourhoods that LISA calls significant after FDR correction. %s finds %d; %d of the %d matrices find none.", lE(REF), fdr[[REF]], n_zero, nrow(specs)),
+     sprintf("Lingkungan yang dinyatakan signifikan oleh LISA setelah koreksi FDR. %s menemukan %d; %d dari %d matriks tidak menemukan satu pun.", lI(REF), fdr[[REF]], n_zero, nrow(specs))),
+  mk(3, paste0(FE(sim_res$meta$obs_I), " → ", FE(sim_res$meta$rw_I_mean)), paste0(FI(sim_res$meta$obs_I), " → ", FI(sim_res$meta$rw_I_mean)),
+     "Moran's I with Queen neighbours, then with the same number of neighbours assigned at random. Placement drives the result.",
+     "Moran's I dengan tetangga Queen, lalu dengan jumlah tetangga yang sama tetapi diacak. Letak bobot yang menentukan hasil."),
+  mk(4, lE(rec_id), lI(rec_id),
+     sprintf("Recommended when nothing is known about the spatial process: the smallest worst-case loss of power (%s) in the simulation.", FE(rcr$`K3 penyesalan maks Moran`)),
+     sprintf("Rekomendasi bila proses spasialnya tidak diketahui: kehilangan daya terburuk paling kecil (%s) dalam simulasi.", FI(rcr$`K3 penyesalan maks Moran`))),
+  '</div>\n')
+```
+
+<div class="note warn">
+<span class="t"><span class="en">What a good-looking result does not prove</span><span class="id">Hal yang tidak dibuktikan oleh hasil yang terlihat bagus</span></span>
+
+::: en
+A small p-value under one $W$ shows that this $W$ found structure in these data. It does not show that the structure survives another reasonable $W$, that the $W$ was chosen for a reason, or that a LISA cluster is real after testing 49 areas at once. Each of these claims needs its own evidence, and the chapters below supply it for CRIME.
+:::
+
+::: id
+p-value kecil pada satu $W$ hanya menunjukkan bahwa $W$ itu menemukan struktur pada data ini. Itu tidak menunjukkan bahwa struktur tersebut bertahan pada $W$ lain yang juga masuk akal, bahwa $W$ dipilih dengan alasan, atau bahwa klaster LISA tetap nyata setelah 49 wilayah diuji sekaligus. Setiap klaim itu membutuhkan buktinya sendiri, dan bab-bab berikut menyediakannya untuk CRIME.
+:::
+</div>
+
+::: en
+The study computed the same pipeline for six Columbus variables; their full results are in `output/csv/` and in the dashboard. This report reads only CRIME, as the revision asked, so that every chart and table follows one variable from start to finish.
+:::
+
+::: id
+Pipeline yang sama dijalankan untuk enam variabel Columbus; hasil lengkapnya ada di `output/csv/` dan di dashboard. Laporan ini hanya membaca CRIME, sesuai permintaan revisi, sehingga setiap grafik dan tabel mengikuti satu variabel dari awal sampai akhir.
+:::
+</section>
+
+<section class="chap" id="data">
+<h2><span class="en">The data</span><span class="id">Data</span></h2>
+
+::: en
+CRIME is the number of residential burglaries and vehicle thefts per 1,000 households in each of the 49 planning neighbourhoods of Columbus, Ohio, in 1980 (Anselin, 1988, Table 12.1). The file used here is the GeoDa/SAL shapefile. It was checked against the copy in the R package `spData`: attributes and vertex coordinates are identical, there are no missing values, and `r if (all(checks$Hasil[1:9])) "all nine required validation checks pass" else "not all required validation checks pass"`. The file has no coordinate reference system, so distances below are in map units.
+:::
+
+::: id
+CRIME adalah jumlah pencurian rumah dan kendaraan per 1.000 rumah tangga di setiap 49 lingkungan perencanaan Columbus, Ohio, tahun 1980 (Anselin, 1988, Tabel 12.1). Berkas yang dipakai adalah shapefile GeoDa/SAL. Berkas ini dicocokkan dengan salinan di paket R `spData`: atribut dan koordinat verteksnya identik, tidak ada nilai hilang, dan `r if (all(checks$Hasil[1:9])) "kesembilan pemeriksaan validasi wajib lolos" else "tidak semua pemeriksaan validasi wajib lolos"`. Berkas ini tidak memiliki sistem referensi koordinat, sehingga jarak di bawah memakai satuan peta.
+:::
+
+```{r t-desc}
+bi_table(function(l) {
+  F <- function(x, d = 2) FL(x, d, l)
+  df <- data.frame(a = c("n", if (l == "id") "Rata-rata" else "Mean", if (l == "id") "Simpangan baku" else "Standard deviation",
+                         "Min", "Q1", "Median", "Q3", if (l == "id") "Maks" else "Max", if (l == "id") "Kemencengan" else "Skewness",
+                         if (l == "id") "Kurtosis berlebih" else "Excess kurtosis", if (l == "id") "p Shapiro–Wilk" else "Shapiro–Wilk p",
+                         if (l == "id") "Pencilan (1,5 · IQR)" else "Outliers (1.5 · IQR)"),
+                   b = c(dC$n, F(dC$Mean), F(dC$SD), F(dC$Min), F(dC$Q1), F(dC$Median), F(dC$Q3), F(dC$Max), F(dC$Skewness), F(dC$`Excess kurtosis`),
+                         PL(dC$`Shapiro–Wilk p`, l), as.character(dC$`n outlier (1,5·IQR)`)))
+  names(df) <- if (l == "id") c("Statistik", "CRIME") else c("Statistic", "CRIME")
+  list(df = df, cap = if (l == "id") "Ringkasan CRIME (49 lingkungan)" else "CRIME at a glance (49 neighbourhoods)")
+}, cls = "narrow")
+```
+
+```{r ex-map}
+br <- quantile(col$CRIME, seq(0, 1, .2)); cls <- cut(col$CRIME, br, include.lowest = TRUE, labels = FALSE)
+ramp <- c("#22304A", "#4A2E4C", "#86324A", "#CF4A4A", "#FCA5A5")
+m <- svg_map(ramp[cls], sprintf("POLYID %d · CRIME %s", col$POLYID, FE(col$CRIME, 1)), "Map of CRIME by neighbourhood")
+leg <- function(l) legend_html(ramp, vapply(1:5, function(k) paste(FL(br[k], 1, l), "–", FL(br[k + 1], 1, l)), ""))
+exhibit(function(l) paste0('<div style="max-width:620px;margin:0 auto">', m, leg(l), '</div>'), html = TRUE,
+  title = c(en = "Where CRIME is high", id = "Di mana CRIME tinggi"),
+  cap = c(en = "Quintiles of CRIME per 1,000 households. Hover a neighbourhood to see its POLYID and value. The highest values form a block in the centre of the city and fall off toward the edges. That is the pattern every statistic below tries to summarise.",
+          id = "Kuintil CRIME per 1.000 rumah tangga. Arahkan kursor ke lingkungan untuk melihat POLYID dan nilainya. Nilai tertinggi membentuk satu blok di tengah kota dan menurun ke arah pinggiran. Pola inilah yang coba diringkas oleh setiap statistik di bawah."))
+```
+</section>
+
+<section class="chap" id="matrices">
+<h2><span class="en">32 definitions of neighbour</span><span class="id">32 definisi tetangga</span></h2>
+
+::: en
+Each matrix is built from one of four rules, at several settings, and then used either as binary weights (B: every neighbour counts 1) or row-standardised (W: each row sums to 1, so a neighbourhood's neighbours share one unit of weight). Inverse-distance matrices use raw weights $1/d$ or $1/d^2$ instead of binary ones.
+
+* **Contiguity:** Queen (shares a border or a corner) and Rook (shares a border).
+* **K nearest neighbours:** $k$ = 2, 3, 4, 5, 6, 8 closest centroids.
+* **Distance band:** every centroid within $d$ map units, for $d$ from 0.62 (the smallest value that leaves nobody isolated) to 1.65.
+* **Inverse distance:** every pair weighted by $1/d$ or $1/d^2$.
+
+The diagonal is zero in all 32 ($w_{ii} = 0$): an area is never its own neighbour. Chapter 8 shows why this matters. The Queen matrix reproduces the GeoDa `columbus.gal` file exactly.
+:::
+
+::: id
+Setiap matriks dibangun dari salah satu dari empat aturan, dengan beberapa pengaturan, lalu dipakai sebagai bobot biner (B: setiap tetangga bernilai 1) atau distandardisasi baris (W: setiap baris berjumlah 1, sehingga tetangga sebuah lingkungan berbagi satu satuan bobot). Matriks invers jarak memakai bobot mentah $1/d$ atau $1/d^2$, bukan biner.
+
+* **Kontiguitas:** Queen (berbagi batas atau titik sudut) dan Rook (berbagi batas).
+* **K tetangga terdekat:** $k$ = 2, 3, 4, 5, 6, 8 centroid terdekat.
+* **Pita jarak:** semua centroid dalam radius $d$ satuan peta, dengan $d$ dari 0,62 (nilai terkecil yang membuat tidak ada wilayah terisolasi) sampai 1,65.
+* **Invers jarak:** setiap pasangan diberi bobot $1/d$ atau $1/d^2$.
+
+Diagonal bernilai nol pada ke-32 matriks ($w_{ii} = 0$): sebuah wilayah tidak pernah menjadi tetangga dirinya sendiri. Bab 8 menunjukkan mengapa hal ini penting. Matriks Queen identik dengan berkas `columbus.gal` dari GeoDa.
+:::
+
+```{r ex-graphs}
+gid <- c("queen_B", "knn2_B", "knn6_B", "band062_B", "band165_B", "rook_B")
+cells <- function(l) paste0('<div class="maps m3">', paste0(vapply(gid, function(id) {
+  e <- edges_all[[id]]; s <- specs[specs$id == id, ]
+  sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s</div>', esc(spec_lab(id, l)),
+          if (l == "id") sprintf("%s pasangan, rata-rata %s tetangga", NI(nrow(e)), FI(s$`Rata-rata tetangga`, 2)) else sprintf("%s pairs, %s neighbours on average", NE(nrow(e)), FE(s$`Rata-rata tetangga`, 2)),
+          svg_map(rep("#16223A", 49), sprintf("POLYID %d", col$POLYID), paste("Neighbour graph", spec_lab(id, "en")), edges = e, nodes = TRUE))
+}, ""), collapse = ""), '</div>')
+exhibit(cells, html = TRUE,
+  title = c(en = "Six of the neighbour graphs", id = "Enam graf ketetanggaan"),
+  cap = c(en = "Each line joins two neighbourhoods that the rule calls neighbours. The same 49 centroids give anything from a sparse chain (k = 2) to a dense web (d ≤ 1.65). Every statistic in this report is a weighted sum over these lines.",
+          id = "Setiap garis menghubungkan dua lingkungan yang oleh aturannya disebut bertetangga. 49 centroid yang sama menghasilkan apa saja, dari rantai jarang (k = 2) sampai jaring padat (d ≤ 1,65). Setiap statistik dalam laporan ini adalah jumlah berbobot atas garis-garis ini."))
+```
+
+```{r t-specs}
+bi_table(function(l) {
+  sB <- specs |> filter(style == "B") |> arrange(order)
+  df <- data.frame(FAM[[l]][as.character(sB$family)], sub(" · .*$", "", spec_lab(sB$id, l)),
+                   vapply(sB$`Total link`, function(v) if (l == "id") NI(v) else NE(v), ""), FL(sB$`Rata-rata tetangga`, 2, l),
+                   as.character(sB$`Min tetangga`), as.character(sB$`Maks tetangga`))
+  names(df) <- if (l == "id") c("Keluarga", "Aturan", "Link berarah", "Rata-rata tetangga", "Min", "Maks") else c("Family", "Rule", "Directed links", "Mean neighbours", "Min", "Max")
+  list(df = df, cap = if (l == "id") "16 struktur ketetanggaan (masing-masing dipakai dua kali: B dan W)" else "16 neighbour structures (each used twice: B and W)",
+       foot = if (l == "id") "Invers jarak menghubungkan semua pasangan, sehingga setiap wilayah punya 48 tetangga dengan bobot yang meluruh." else "Inverse distance links every pair, so each area has 48 neighbours with decaying weights.")
+}, left = 1:2)
+```
+</section>
+
+<section class="chap" id="global">
+<h2><span class="en">Global tests under 32 matrices</span><span class="id">Uji global pada 32 matriks</span></h2>
+
+::: en
+Both indices summarise the whole map in one number. Moran's I compares each area with its neighbours through cross-products of deviations from the mean. Geary's C uses squared differences between neighbours, so it reacts more to local jumps:
+:::
+
+::: id
+Kedua indeks meringkas seluruh peta menjadi satu angka. Moran's I membandingkan setiap wilayah dengan tetangganya melalui perkalian simpangan dari rata-rata. Geary's C memakai kuadrat selisih antartetangga, sehingga lebih peka terhadap lonjakan lokal:
+:::
+
+<div class="formula">
+$$I=\frac{n}{S_0}\,\frac{\sum_i\sum_j w_{ij}(x_i-\bar x)(x_j-\bar x)}{\sum_i (x_i-\bar x)^2},\qquad C=\frac{n-1}{2S_0}\,\frac{\sum_i\sum_j w_{ij}(x_i-x_j)^2}{\sum_i (x_i-\bar x)^2},\qquad S_0=\sum_i\sum_j w_{ij}$$
+</div>
+
+::: en
+Positive autocorrelation means $I > E(I) = -1/(n-1)$ and $C < 1$. Significance comes from a permutation test: the 49 CRIME values are shuffled across the map 9,999 times, which destroys any spatial pattern while keeping the values, and the observed index is compared with that shuffled distribution. To put both indices on one scale, z is oriented so that **z > 0 means positive autocorrelation for both**.
+
+Under the reference matrix `r lE(REF)`:
+:::
+
+::: id
+Autokorelasi positif berarti $I > E(I) = -1/(n-1)$ dan $C < 1$. Signifikansi diperoleh dari uji permutasi: 49 nilai CRIME diacak posisinya di peta sebanyak 9.999 kali, sehingga pola spasial hilang tetapi nilainya tetap, lalu indeks yang teramati dibandingkan dengan sebaran hasil acakan itu. Agar kedua indeks berada pada satu skala, z diorientasikan sehingga **z > 0 berarti autokorelasi positif untuk keduanya**.
+
+Pada matriks acuan `r lI(REF)`:
+:::
+
+```{r t-ref}
+bi_table(function(l) {
+  r <- bind_rows(rM, rG)
+  concl <- function(x) if (l == "id") x else c("Positif" = "Positive", "Negatif" = "Negative", "Tidak signifikan" = "Not significant")[x]
+  df <- data.frame(r$index, FL(r$stat, 3, l), FL(r$expected, 3, l), FL(r$z_perm, 2, l), vapply(r$p_two, PL, "", lang = l), unname(concl(r$conclusion)))
+  names(df) <- if (l == "id") c("Indeks", "Nilai", "Harapan di bawah H₀", "z permutasi", "p (dua sisi)", "Kesimpulan") else c("Index", "Value", "Expected under H₀", "Permutation z", "p (two-sided)", "Conclusion")
+  list(df = df, cap = paste0(if (l == "id") "CRIME dengan " else "CRIME under ", spec_lab(REF, l), if (l == "id") ", 9.999 permutasi" else ", 9,999 permutations"))
+})
+```
+
+```{r ex-z}
+zplot <- function(l) {
+  d <- gC |> mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), sig = ifelse(signif, "sig", "ns"))
+  ggplot(d, aes(z_perm, lab, colour = index)) +
+    annotate("rect", xmin = -1.96, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = "#1A2740") +
+    geom_vline(xintercept = 0, colour = PAL$faint, linewidth = .4) +
+    geom_point(aes(shape = sig), size = 2.6, stroke = 1.1, position = position_dodge(width = .55)) +
+    scale_shape_manual(values = c(sig = 16, ns = 1), labels = if (l == "id") c(sig = "signifikan", ns = "tidak signifikan") else c(sig = "significant", ns = "not significant"), name = NULL) +
+    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    labs(x = if (l == "id") "z permutasi berorientasi (> 0 = autokorelasi positif)" else "oriented permutation z (> 0 = positive autocorrelation)", y = NULL) +
+    theme_case() + theme(panel.grid.major.y = element_blank())
+}
+exhibit(zplot, w = 9, h = 9.2,
+  title = c(en = "Same data, 32 verdicts", id = "Data sama, 32 putusan"),
+  cap = c(en = sprintf("Oriented z for CRIME under every matrix. The shaded band is |z| < 1.96. Moran's I is significant under %d of 32 matrices and Geary's C under %d. None of the %d tests points to negative autocorrelation. What moves is the strength: z for Moran ranges from %s to %s.", sigM, sigG, nrow(gC), FE(min(gM$z_perm), 2), FE(max(gM$z_perm), 2)),
+          id = sprintf("z berorientasi CRIME pada setiap matriks. Pita gelap adalah |z| < 1,96. Moran's I signifikan pada %d dari 32 matriks dan Geary's C pada %d. Tidak satu pun dari %d uji menunjukkan autokorelasi negatif. Yang bergeser adalah kekuatannya: z Moran berkisar dari %s sampai %s.", sigM, sigG, nrow(gC), FI(min(gM$z_perm), 2), FI(max(gM$z_perm), 2))),
+  alt = c(en = "Dot plot of oriented z-scores for Moran's I and Geary's C under 32 weights matrices", id = "Plot titik skor z berorientasi Moran's I dan Geary's C pada 32 matriks bobot"))
+```
+
+::: en
+The direction of the answer is stable: CRIME is positively autocorrelated under every rule that finds anything. The size of the answer is not. Moran's I runs from `r FE(min(gM$stat))` (`r lE(I_lo)`) to `r FE(max(gM$stat))` (`r lE(I_hi)`), a factor of `r FE(max(gM$stat) / min(gM$stat), 1)`, and Geary's C from `r FE(min(gG$stat))` to `r FE(max(gG$stat))`. A report that quotes one of these numbers as "the" spatial autocorrelation of crime in Columbus is quoting a choice.
+:::
+
+::: id
+Arah jawabannya stabil: CRIME berautokorelasi positif pada setiap aturan yang menemukan sesuatu. Besar jawabannya tidak stabil. Moran's I berkisar dari `r FI(min(gM$stat))` (`r lI(I_lo)`) sampai `r FI(max(gM$stat))` (`r lI(I_hi)`), selisih `r FI(max(gM$stat) / min(gM$stat), 1)` kali lipat, dan Geary's C dari `r FI(min(gG$stat))` sampai `r FI(max(gG$stat))`. Laporan yang menyebut salah satu angka ini sebagai "nilai" autokorelasi spasial kejahatan di Columbus sebenarnya sedang menyebut sebuah pilihan.
+:::
+
+```{r ex-curves}
+cplot <- function(l) {
+  d <- curve_df |> filter(var == "CRIME") |>
+    select(family, param, index, style, es, z_perm) |> pivot_longer(c(es, z_perm), names_to = "m", values_to = "v") |>
+    mutate(m = factor(m, c("es", "z_perm"), if (l == "id") c("Ukuran efek berorientasi", "z permutasi") else c("Oriented effect size", "Permutation z")),
+           family = factor(family, c("KNN", "Distance band"), if (l == "id") c("k tetangga terdekat", "Ambang pita jarak d") else c("k nearest neighbours", "Distance band threshold d")))
+  ggplot(d, aes(param, v, colour = index, linetype = style)) + geom_hline(yintercept = 0, colour = PAL$faint, linewidth = .3) +
+    geom_line(linewidth = .8) + geom_point(size = 1.8) + facet_grid(m ~ family, scales = "free", switch = "y") +
+    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    scale_linetype_manual(values = c(B = "solid", W = "22"), labels = if (l == "id") c(B = "B (biner)", W = "W (standardisasi baris)") else c(B = "B (binary)", W = "W (row-standardised)"), name = NULL) +
+    labs(x = NULL, y = NULL) + theme_case() + theme(strip.placement = "outside")
+}
+exhibit(cplot, w = 9.5, h = 6.4,
+  title = c(en = "Turning one dial at a time", id = "Memutar satu kenop setiap kali"),
+  cap = c(en = "Effect size (I − E(I) for Moran, 1 − C for Geary) and z as the number of neighbours k or the distance threshold d grows. More neighbours average over larger areas: the effect size falls while z can still rise, because the test gains information. For KNN the B and W lines coincide, because every row has exactly k neighbours. Strength and significance answer different questions.",
+          id = "Ukuran efek (I − E(I) untuk Moran, 1 − C untuk Geary) dan z ketika jumlah tetangga k atau ambang jarak d bertambah. Makin banyak tetangga berarti rata-rata atas wilayah yang lebih luas: ukuran efek turun, sementara z masih bisa naik karena uji mendapat lebih banyak informasi. Pada KNN garis B dan W berimpit, karena setiap baris punya tepat k tetangga. Kekuatan dan signifikansi menjawab pertanyaan yang berbeda."),
+  alt = c(en = "Line charts of effect size and z against k and distance threshold", id = "Grafik garis ukuran efek dan z terhadap k dan ambang jarak"))
+```
+
+<h3><span class="en">How a search would look</span><span class="id">Seperti apa hasil pencarian</span></h3>
+::: en
+If an analyst tried all 32 matrices and reported the best one, this is what they could pick from:
+:::
+
+::: id
+Bila seorang analis mencoba ke-32 matriks lalu melaporkan yang terbaik, inilah pilihan yang tersedia:
+:::
+
+```{r t-search}
+bi_table(function(l) {
+  df <- data.frame(ssC$index, vapply(ssC$pmin, PL, "", lang = l), spec_lab(ssC$wmin, l), vapply(ssC$pmax, PL, "", lang = l), spec_lab(ssC$wmax, l), FL(ssC$pct, 0, l))
+  names(df) <- if (l == "id") c("Indeks", "p terkecil", "dengan W", "p terbesar", "dengan W", "% W signifikan") else c("Index", "Smallest p", "under W", "Largest p", "under W", "% of W significant")
+  list(df = df, cap = if (l == "id") "Rentang p-value CRIME di antara 32 matriks" else "Range of CRIME p-values across 32 matrices",
+       foot = if (l == "id") "p terkecil yang mungkin dengan 9.999 permutasi dua sisi adalah 0,0002." else "With 9,999 two-sided permutations the smallest possible p is 0.0002.")
+}, left = c(1, 3, 5))
+```
+
+::: en
+For CRIME the search cannot reverse the verdict for Moran's I, which is significant under `r round(ssC$pct[ssC$index == "Moran's I"])`% of the matrices. That is the good news, and it is specific to a strong signal. In the same study, three of the other five variables (HOVAL, OPEN, PLUMB) have at least one index whose significance can be switched on or off by the choice of $W$ alone (`output/csv/05d_risiko_specification_searching.csv`).
+:::
+
+::: id
+Untuk CRIME, pencarian seperti ini tidak dapat membalik putusan Moran's I, yang signifikan pada `r round(ssC$pct[ssC$index == "Moran's I"])`% matriks. Itu kabar baik, dan berlaku khusus untuk sinyal yang kuat. Dalam studi yang sama, tiga dari lima variabel lain (HOVAL, OPEN, PLUMB) punya setidaknya satu indeks yang signifikansinya bisa dinyalakan atau dimatikan hanya dengan memilih $W$ (`output/csv/05d_risiko_specification_searching.csv`).
+:::
+</section>
+
+<section class="chap" id="agreement">
+<h2><span class="en">Moran versus Geary</span><span class="id">Moran versus Geary</span></h2>
+
+::: en
+`r if (n_agree == nrow(aC)) sprintf("The two indices reach the same verdict under all %d matrices: positive autocorrelation, every time.", nrow(aC)) else sprintf("The two indices reach the same verdict under %d of %d matrices. Only Moran is significant in %d of the rest and only Geary in %d; they never point in opposite directions.", n_agree, nrow(aC), only_M, only_G)` Agreement is expected here because CRIME has no outliers by the 1.5 · IQR rule. Moran weighs products of deviations from the mean, so a large value next to neighbours of the same sign pushes it up. Geary weighs squared jumps between neighbours, so sharp edges pull it. On a variable with a few extreme, clustered values the two can split, as they do for PLUMB in the full study.
+:::
+
+::: id
+`r if (n_agree == nrow(aC)) sprintf("Kedua indeks memberi putusan yang sama pada ke-%d matriks: autokorelasi positif, setiap kali.", nrow(aC)) else sprintf("Kedua indeks memberi putusan yang sama pada %d dari %d matriks. Di sisanya, hanya Moran yang signifikan pada %d kasus dan hanya Geary pada %d; keduanya tidak pernah menunjuk arah yang berlawanan.", n_agree, nrow(aC), only_M, only_G)` Kesepakatan ini wajar karena CRIME tidak memiliki pencilan menurut aturan 1,5 · IQR. Moran menimbang perkalian simpangan dari rata-rata, sehingga nilai besar yang bertetangga dengan nilai bertanda sama mendorongnya naik. Geary menimbang kuadrat lonjakan antartetangga, sehingga tertarik oleh tepi yang tajam. Pada variabel dengan beberapa nilai ekstrem yang mengelompok, keduanya bisa berbeda, seperti PLUMB dalam studi lengkap.
+:::
+
+```{r ex-zz}
+zzplot <- function(l) {
+  d <- aC |> mutate(fam = factor(FAM[[l]][as.character(family)], FAM[[l]]), st = sub("^.*_", "", spec_id))
+  lim <- range(c(0, d$`z_perm_Moran's I`, d$`z_perm_Geary's C`)) + c(0, .4)
+  ggplot(d, aes(`z_perm_Moran's I`, `z_perm_Geary's C`, colour = fam, shape = st)) +
+    annotate("rect", xmin = -Inf, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = "#1A2740") + annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 1.96, fill = "#1A2740") +
+    geom_abline(slope = 1, intercept = 0, linetype = 3, colour = PAL$faint) + geom_point(size = 3, stroke = 1.1) +
+    scale_colour_manual(values = c("#FACC15", "#60A5FA", "#F472B6", "#4ADE80"), name = NULL) +
+    scale_shape_manual(values = c(B = 16, W = 1), labels = if (l == "id") c(B = "B / mentah", W = "W") else c(B = "B / raw", W = "W"), name = NULL) +
+    coord_equal(xlim = lim, ylim = lim) +
+    labs(x = "z Moran's I", y = if (l == "id") "z Geary's C (berorientasi)" else "z Geary's C (oriented)") + theme_case() + guides(colour = guide_legend(nrow = 2))
+}
+exhibit(zzplot, w = 7.6, h = 7.4,
+  title = c(en = "The two verdicts side by side", id = "Dua putusan berdampingan"),
+  cap = c(en = sprintf("Each point is one matrix. Shaded strips are |z| < 1.96 for either index; the dotted line is equal z. Geary's z is below Moran's for %d of 32 matrices, and the gap is widest for binary distance bands and raw inverse distance, where areas with many neighbours carry most of the weight.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`)),
+          id = sprintf("Setiap titik adalah satu matriks. Pita gelap adalah |z| < 1,96 untuk salah satu indeks; garis titik-titik adalah z yang sama. z Geary lebih kecil daripada z Moran pada %d dari 32 matriks, dan selisihnya paling lebar pada pita jarak biner dan invers jarak mentah, ketika wilayah dengan banyak tetangga memikul sebagian besar bobot.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`))),
+  alt = c(en = "Scatter plot of Moran z against Geary z for 32 matrices", id = "Diagram pencar z Moran terhadap z Geary untuk 32 matriks"))
+```
+</section>
+
+<section class="chap" id="influence">
+<h2><span class="en">What one neighbourhood can do</span><span class="id">Pengaruh satu lingkungan</span></h2>
+
+::: en
+A robust pattern should not hinge on one area. Each of the 49 neighbourhoods was removed in turn, $W$ was rebuilt without it, and z was recomputed (jackknife). Under `r lE(REF)`, the largest shift in Moran's z is `r FE(jkR[["Maks |Δz|"]][jkR$index == "Moran's I"], 2)` (removing POLYID `r jkR[["POLYID paling berpengaruh"]][jkR$index == "Moran's I"]`) and in Geary's z `r FE(jkR[["Maks |Δz|"]][jkR$index == "Geary's C"], 2)` (POLYID `r jkR[["POLYID paling berpengaruh"]][jkR$index == "Geary's C"]`). Across the three matrices tested, `r if (jk_flip == 0) "no single removal changes" else paste(jk_flip, "removals change")` the significance of CRIME.
+:::
+
+::: id
+Pola yang robust tidak boleh bergantung pada satu wilayah. Setiap 49 lingkungan dihapus satu per satu, $W$ dibangun ulang tanpa wilayah itu, lalu z dihitung ulang (jackknife). Pada `r lI(REF)`, pergeseran terbesar z Moran adalah `r FI(jkR[["Maks |Δz|"]][jkR$index == "Moran's I"], 2)` (menghapus POLYID `r jkR[["POLYID paling berpengaruh"]][jkR$index == "Moran's I"]`) dan z Geary `r FI(jkR[["Maks |Δz|"]][jkR$index == "Geary's C"], 2)` (POLYID `r jkR[["POLYID paling berpengaruh"]][jkR$index == "Geary's C"]`). Pada tiga matriks yang diuji, `r if (jk_flip == 0) "tidak ada satu penghapusan pun yang mengubah" else paste(jk_flip, "penghapusan mengubah")` signifikansi CRIME.
+:::
+
+```{r ex-jk}
+jplot <- function(l) {
+  d <- jk |> filter(ref == REF, var == "CRIME")
+  ggplot(d, aes(drop_polyid, dz, colour = index)) + geom_hline(yintercept = 0, colour = PAL$faint, linewidth = .4) +
+    geom_segment(aes(xend = drop_polyid, yend = 0), alpha = .55, position = position_dodge(width = .6)) +
+    geom_point(size = 1.9, position = position_dodge(width = .6)) +
+    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    scale_x_continuous(breaks = seq(1, 49, 4)) +
+    labs(x = if (l == "id") "POLYID yang dihapus" else "POLYID removed", y = if (l == "id") "Δz = z(tanpa i) − z(lengkap)" else "Δz = z(without i) − z(full)") + theme_case()
+}
+exhibit(jplot, w = 9.5, h = 4.6,
+  title = c(en = "Leave one neighbourhood out", id = "Keluarkan satu lingkungan"),
+  cap = c(en = sprintf("Change in z when each neighbourhood is removed, %s. Shifts of this size do not move CRIME across the 1.96 line, because its z starts far above it (Moran z = %s).", lE(REF), FE(rM$z_perm, 2)),
+          id = sprintf("Perubahan z bila setiap lingkungan dihapus, %s. Pergeseran sebesar ini tidak membuat CRIME melewati garis 1,96, karena z-nya sejak awal jauh di atasnya (z Moran = %s).", lI(REF), FI(rM$z_perm, 2))),
+  alt = c(en = "Lollipop chart of jackknife change in z by removed neighbourhood", id = "Diagram lolipop perubahan z jackknife menurut lingkungan yang dihapus"))
+```
+
+::: en
+Replacing CRIME by its ranks (which removes the effect of extreme values) changes z by `r FE(rkC[["Rata-rata |Δz|"]][rkC$index == "Moran's I"], 2)` on average for Moran and `r FE(rkC[["Rata-rata |Δz|"]][rkC$index == "Geary's C"], 2)` for Geary, `r if (sum(rkC[["W berubah signifikansi"]]) == 0) "and does not change significance under any matrix." else sprintf("and changes significance under %d and %d matrices respectively.", rkC[["W berubah signifikansi"]][rkC$index == "Moran's I"], rkC[["W berubah signifikansi"]][rkC$index == "Geary's C"])` Switching between B and W standardisation changes z by `r FE(stC[["Rata-rata |Δz|"]][stC$index == "Moran's I"], 2)` (Moran) and `r FE(stC[["Rata-rata |Δz|"]][stC$index == "Geary's C"], 2)` (Geary) on average.
+:::
+
+::: id
+Mengganti CRIME dengan peringkatnya (yang menghilangkan pengaruh nilai ekstrem) mengubah z rata-rata sebesar `r FI(rkC[["Rata-rata |Δz|"]][rkC$index == "Moran's I"], 2)` untuk Moran dan `r FI(rkC[["Rata-rata |Δz|"]][rkC$index == "Geary's C"], 2)` untuk Geary, `r if (sum(rkC[["W berubah signifikansi"]]) == 0) "dan tidak mengubah signifikansi pada matriks mana pun." else sprintf("dan mengubah signifikansi pada %d dan %d matriks.", rkC[["W berubah signifikansi"]][rkC$index == "Moran's I"], rkC[["W berubah signifikansi"]][rkC$index == "Geary's C"])` Beralih antara standardisasi B dan W mengubah z rata-rata sebesar `r FI(stC[["Rata-rata |Δz|"]][stC$index == "Moran's I"], 2)` (Moran) dan `r FI(stC[["Rata-rata |Δz|"]][stC$index == "Geary's C"], 2)` (Geary).
+:::
+</section>
+
+<section class="chap" id="local">
+<h2><span class="en">Local clusters: where the critique bites</span><span class="id">Klaster lokal: di sini kritiknya paling terasa</span></h2>
+
+::: en
+LISA splits Moran's I into one value per area and labels each significant area High-High (a high value among high neighbours), Low-Low, High-Low or Low-High. Each area gets its own conditional permutation test, so 49 tests are run at once; at α = 0.05 about 2.5 areas would look significant by chance alone. The p-values are therefore corrected with the Benjamini–Hochberg false discovery rate (FDR).
+
+Under `r lE(REF)`, `r raw_ref` neighbourhoods have a raw p below 0.05 and `r fdr[[REF]]` remain after FDR: `r and_list(paste("POLYID", ref_sig$POLYID), "en")`.
+:::
+
+::: id
+LISA memecah Moran's I menjadi satu nilai per wilayah dan memberi label pada setiap wilayah signifikan: High-High (nilai tinggi di antara tetangga bernilai tinggi), Low-Low, High-Low, atau Low-High. Setiap wilayah diuji dengan permutasi bersyaratnya sendiri, sehingga 49 uji dijalankan sekaligus; pada α = 0,05 sekitar 2,5 wilayah akan tampak signifikan hanya karena kebetulan. Karena itu p-value dikoreksi dengan *false discovery rate* (FDR) Benjamini–Hochberg.
+
+Pada `r lI(REF)`, `r raw_ref` lingkungan memiliki p mentah di bawah 0,05 dan `r fdr[[REF]]` tetap signifikan setelah FDR: `r and_list(paste("POLYID", ref_sig$POLYID), "id")`.
+:::
+
+```{r ex-lisa-ref}
+d <- lC |> filter(spec_id == REF) |> arrange(POLYID)
+gi <- lsupC |> arrange(POLYID)
+gcol <- c("Hot spot" = "#EF4444", "Cold spot" = "#3B82F6", "Tidak signifikan" = "#26354F")
+lcol <- c("High-High" = "#EF4444", "Low-Low" = "#3B82F6", "Other Positive" = "#FDBA74", "Negative" = "#93C5FD", "Tidak signifikan" = "#26354F")
+m1 <- svg_map(COL_LISA_D[d$class_fdr], sprintf("POLYID %d · %s · p(FDR) %s", d$POLYID, d$class_fdr, FE(d$p_fdr, 3)), "LISA cluster map of CRIME")
+m2 <- svg_map(gcol[gi$Gi_class], sprintf("POLYID %d · Gi* z %s", gi$POLYID, FE(gi$Gi_star_z, 2)), "Getis-Ord Gi star map of CRIME")
+m3 <- svg_map(ifelse(gi$localC_class %in% names(lcol), lcol[gi$localC_class], "#FDBA74"), sprintf("POLYID %d · Local Geary · %s", gi$POLYID, gi$localC_class), "Local Geary map of CRIME")
+ex <- function(l) {
+  ns <- if (l == "id") "Tidak signifikan" else "Not significant"
+  paste0('<div class="maps m3">',
+    sprintf('<div class="mapcell"><h4>LISA</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Moran lokal, FDR 5%" else "Local Moran, FDR 5%", m1,
+            legend_html(COL_LISA_D, c("High-High", "Low-Low", "High-Low", "Low-High", ns))),
+    sprintf('<div class="mapcell"><h4>Getis–Ord G<sub>i</sub>*</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Queen biner dengan diri sendiri, FDR 5%" else "Binary Queen including self, FDR 5%", m2,
+            legend_html(gcol, c("Hot spot", "Cold spot", ns))),
+    sprintf('<div class="mapcell"><h4>Local Geary</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Queen · W, FDR 5%" else "Queen · W, FDR 5%", m3,
+            legend_html(c("#EF4444", "#3B82F6", "#FDBA74", "#26354F"), c("High-High", "Low-Low", if (l == "id") "Lainnya" else "Other", ns))),
+    '</div>')
+}
+exhibit(ex, html = TRUE,
+  title = c(en = "Three local statistics, one reference matrix", id = "Tiga statistik lokal, satu matriks acuan"),
+  cap = c(en = sprintf("Gi* marks %d hot spots (%s) and %d cold spots; Local Geary flags %d areas. The three tools ask slightly different questions, but they point at the same part of the city. Hover for values.", length(gi_hot), and_list(gi_hot, "en"), length(gi_cold), lc_sig),
+          id = sprintf("Gi* menandai %d hot spot (%s) dan %d cold spot; Local Geary menandai %d wilayah. Ketiga alat mengajukan pertanyaan yang sedikit berbeda, tetapi menunjuk bagian kota yang sama. Arahkan kursor untuk melihat nilainya.", length(gi_hot), and_list(gi_hot, "id"), length(gi_cold), lc_sig)))
+```
+
+::: en
+That map is the one most reports would print. The next exhibit prints the same statistic, on the same data, under six other matrices.
+:::
+
+::: id
+Peta itulah yang biasanya dicetak dalam laporan. Bukti berikut mencetak statistik yang sama, pada data yang sama, dengan enam matriks lain.
+:::
+
+```{r ex-lisa-multi}
+pick6 <- unique(c(fdr_hi, rec_id, "band110_W", "knn8_W", "knn4_W", "knn2_W", "rook_W"))
+pick6 <- head(pick6[!is.na(pick6) & pick6 != REF], 6)
+cellsL <- function(l) paste0('<div class="maps m3">', paste0(vapply(pick6, function(id) {
+  d <- lC |> filter(spec_id == id) |> arrange(POLYID)
+  sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s</div>', esc(spec_lab(id, l)),
+          if (l == "id") sprintf("%d signifikan (FDR), %d dengan p mentah", fdr[[id]], raw_n[[id]]) else sprintf("%d significant (FDR), %d by raw p", fdr[[id]], raw_n[[id]]),
+          svg_map(COL_LISA_D[d$class_fdr], sprintf("POLYID %d · %s", d$POLYID, d$class_fdr), paste("LISA map of CRIME,", spec_lab(id, "en"))))
+}, ""), collapse = ""), '</div>', legend_html(COL_LISA_D, c("High-High", "Low-Low", "High-Low", "Low-High", if (l == "id") "Tidak signifikan" else "Not significant")))
+exhibit(cellsL, html = TRUE,
+  title = c(en = "Same statistic, six other maps", id = "Statistik sama, enam peta lain"),
+  cap = c(en = sprintf("LISA for CRIME, FDR 5%%, under six alternative matrices. Across all 32, the number of significant neighbourhoods ranges from %d to %d, and %d matrices find none. Moran's global test is significant under %d of those same 32 matrices: a significant global index does not guarantee a single significant local cluster.", min(fdr), max(fdr), n_zero, sigM),
+          id = sprintf("LISA untuk CRIME, FDR 5%%, dengan enam matriks alternatif. Di antara ke-32 matriks, jumlah lingkungan signifikan berkisar dari %d sampai %d, dan %d matriks tidak menemukan satu pun. Uji global Moran signifikan pada %d dari 32 matriks yang sama: indeks global yang signifikan tidak menjamin ada satu pun klaster lokal yang signifikan.", min(fdr), max(fdr), n_zero, sigM)))
+```
+
+```{r ex-grid}
+gplot <- function(l) {
+  d <- lC |> left_join(select(specs, spec_id = id, order), by = "spec_id") |>
+    mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), cl = factor(class_fdr, names(COL_LISA_D)))
+  ggplot(d, aes(factor(POLYID), lab, fill = cl)) + geom_tile(colour = PAL$bg, linewidth = .5) +
+    scale_fill_manual(values = COL_LISA_D, drop = FALSE, labels = c(HH = "High-High", LL = "Low-Low", HL = "High-Low", LH = "Low-High", NS = if (l == "id") "Tidak signifikan" else "Not significant"), name = NULL) +
+    labs(x = "POLYID", y = NULL) + theme_case(11.5) + theme(panel.grid = element_blank(), axis.text.x = element_text(size = 7.5))
+}
+exhibit(gplot, w = 10, h = 8.2,
+  title = c(en = "Every neighbourhood under every matrix", id = "Setiap lingkungan pada setiap matriks"),
+  cap = c(en = sprintf("One row per matrix, one column per neighbourhood, FDR 5%%. %d neighbourhoods are flagged by at least one matrix and %d by all 32. Under the least similar matrix (%s) only %s%% of the 49 labels match %s.", n_ever, n_always, lE(min_same_w), FE(min_same, 0), lE(REF)),
+          id = sprintf("Satu baris per matriks, satu kolom per lingkungan, FDR 5%%. %d lingkungan ditandai oleh setidaknya satu matriks dan %d oleh ke-32 matriks. Pada matriks yang paling berbeda (%s) hanya %s%% dari 49 label yang sama dengan %s.", n_ever, n_always, lI(min_same_w), FI(min_same, 0), lI(REF))),
+  alt = c(en = "Tile chart of LISA class for 49 neighbourhoods under 32 matrices", id = "Diagram ubin kelas LISA untuk 49 lingkungan pada 32 matriks"))
+```
+
+::: en
+The global sign of CRIME never changes, yet the local map ranges from empty to `r max(fdr)` flagged neighbourhoods. LISA results are the part of this analysis most exposed to the choice of $W$, and the part most often shown as a single map. A LISA cluster is evidence only when it appears under a range of defensible matrices and survives the FDR correction.
+:::
+
+::: id
+Tanda global CRIME tidak pernah berubah, tetapi peta lokalnya berkisar dari kosong sampai `r max(fdr)` lingkungan yang ditandai. Hasil LISA adalah bagian analisis yang paling rentan terhadap pilihan $W$, sekaligus bagian yang paling sering ditampilkan sebagai satu peta saja. Klaster LISA baru menjadi bukti bila muncul pada berbagai matriks yang dapat dipertanggungjawabkan dan tetap signifikan setelah koreksi FDR.
+:::
+</section>
+
+<section class="chap" id="simulation">
+<h2><span class="en">Which matrix to trust: a simulation</span><span class="id">Matriks mana yang dipercaya: simulasi</span></h2>
+
+::: en
+The chapters so far show that $W$ matters on the observed data, but there the true pattern is unknown, so they cannot say which $W$ is right. This chapter answers the revision questions: which matrices are robust and which are sensitive, which one to use when nothing is known, whether results depend on the diagonal or on placement, and whether the computation itself is correct. Everything is done for CRIME only.
+:::
+
+::: id
+Bab-bab sebelumnya menunjukkan bahwa $W$ berpengaruh pada data teramati, tetapi di sana pola sebenarnya tidak diketahui, sehingga tidak bisa dikatakan $W$ mana yang benar. Bab ini menjawab pertanyaan revisi: matriks mana yang robust dan mana yang sensitif, matriks mana yang dipakai bila tidak ada informasi, apakah hasil bergantung pada diagonal atau pada letak bobot, dan apakah komputasinya sendiri benar. Semuanya dilakukan hanya untuk CRIME.
+:::
+
+<h3><span class="en">Diagonal or placement? Computational tests</span><span class="id">Diagonal atau letak? Uji komputasi</span></h3>
+```{r t-tests}
+bi_table(function(l) {
+  F <- function(x, d = 3) FL(x, d, l); sci <- function(x) sprintf("%.1e", x)
+  if (l == "id") {
+    uji <- c("U1 Implementasi sendiri = spdep (32 W)", "U2 Ubah label wilayah pada x dan W bersamaan (200 kali × 32 W)",
+             "U3 Acak letak tetangga Queen, jumlah tetangga tetap (999 kali)", "U4a Diagonal wᵢᵢ = 1 pada Queen: Moran's I",
+             "U4b Diagonal wᵢᵢ = 1 pada Queen: Geary's C", "U5 Simetrisasi (W + Wᵀ)/2 (32 W)", "U6 Skala 7,3 · W (32 W)",
+             "U7 SD analitik vs SD 9.999 permutasi (32 W)")
+    has <- c(paste("maks |selisih| =", sci(u1)), paste("maks |selisih| =", sci(u2)),
+             sprintf("I: %s → rata-rata %s (SD %s)", F(obs["queen_B", "I"]), F(mean(rw[, 1])), F(sd(rw[, 1]))),
+             sprintf("%s → %s (rumus: %s)", F(obs["queen_B", "I"]), F(od["I"]), F(u4_I_pred)),
+             sprintf("%s → %s (= C · S₀/S₀′ = %s)", F(obs["queen_B", "C"]), F(od["C"]), F(u4_C_pred)),
+             paste("maks |selisih| =", sci(u5)), paste("maks |selisih| =", sci(u6)), paste("maks |rasio − 1| =", F(u7)))
+    kes <- c("Hitungan benar", "Label tidak berpengaruh", "Letak menentukan hasil", "Diagonal menggelembungkan I", "Hanya lewat S₀",
+             "Hanya bagian simetris yang dipakai", "Skala tidak berpengaruh", "Momen analitik sah dipakai")
+    nm <- c("Uji", "Hasil", "Kesimpulan")
+  } else {
+    uji <- c("U1 Own implementation = spdep (32 W)", "U2 Relabel areas in x and W together (200 times × 32 W)",
+             "U3 Rewire Queen neighbours at random, same counts (999 times)", "U4a Diagonal wᵢᵢ = 1 on Queen: Moran's I",
+             "U4b Diagonal wᵢᵢ = 1 on Queen: Geary's C", "U5 Symmetrise (W + Wᵀ)/2 (32 W)", "U6 Rescale 7.3 · W (32 W)",
+             "U7 Analytic SD vs SD of 9,999 permutations (32 W)")
+    has <- c(paste("max |diff| =", sci(u1)), paste("max |diff| =", sci(u2)),
+             sprintf("I: %s → mean %s (SD %s)", F(obs["queen_B", "I"]), F(mean(rw[, 1])), F(sd(rw[, 1]))),
+             sprintf("%s → %s (formula: %s)", F(obs["queen_B", "I"]), F(od["I"]), F(u4_I_pred)),
+             sprintf("%s → %s (= C · S₀/S₀′ = %s)", F(obs["queen_B", "C"]), F(od["C"]), F(u4_C_pred)),
+             paste("max |diff| =", sci(u5)), paste("max |diff| =", sci(u6)), paste("max |ratio − 1| =", F(u7)))
+    kes <- c("Computation correct", "Labels do not matter", "Placement decides the result", "Diagonal inflates I", "Only through S₀",
+             "Only the symmetric part is used", "Scale does not matter", "Analytic moments are valid")
+    nm <- c("Test", "Result", "Conclusion")
+  }
+  df <- data.frame(uji, has, kes); names(df) <- nm
+  list(df = df, cap = if (l == "id") "Uji komputasi U1–U7 untuk CRIME" else "Computational tests U1–U7 for CRIME")
+}, left = 1:3, wide = c("Test", "Uji"))
+```
+
+```{r ex-rewire}
+rplot <- function(l) {
+  d <- data.frame(I = rw[, 1])
+  ref <- data.frame(x = c(obs["queen_B", "I"], od["I"], -1 / 48),
+                    k = if (l == "id") c("Queen asli", "Queen dengan wᵢᵢ = 1", "E(I) tanpa pola") else c("Queen as built", "Queen with wᵢᵢ = 1", "E(I) with no pattern"))
+  ggplot(d, aes(I)) + geom_histogram(bins = 40, fill = "#3A4D6E", colour = PAL$bg, linewidth = .2) +
+    geom_vline(data = ref, aes(xintercept = x, colour = k), linewidth = 1.1) +
+    scale_colour_manual(values = setNames(c(PAL$accent, PAL$pos, PAL$muted), ref$k), name = NULL) +
+    labs(x = if (l == "id") "Moran's I CRIME dengan tetangga Queen yang diacak (999 kali)" else "Moran's I of CRIME with rewired Queen neighbours (999 times)",
+         y = if (l == "id") "Frekuensi" else "Count") + theme_case()
+}
+exhibit(rplot, w = 9, h = 4.4,
+  title = c(en = "Placement, not labels, makes the pattern", id = "Letak, bukan label, yang membentuk pola"),
+  cap = c(en = sprintf("Keep every neighbourhood's number of Queen neighbours, but choose who they are at random: Moran's I falls from %s to an average of %s, close to E(I) = %s. Setting the diagonal to 1 does the opposite and inflates I to %s, because every area becomes its own perfectly similar neighbour. Geary's numerator ignores the diagonal (xᵢ − xᵢ = 0), so C only changes through S₀.", FE(obs["queen_B", "I"]), FE(mean(rw[, 1])), FE(-1 / 48), FE(od["I"])),
+          id = sprintf("Jumlah tetangga Queen setiap lingkungan dipertahankan, tetapi siapa tetangganya dipilih acak: Moran's I turun dari %s menjadi rata-rata %s, mendekati E(I) = %s. Mengisi diagonal dengan 1 berefek sebaliknya dan menggelembungkan I menjadi %s, karena setiap wilayah menjadi tetangga dirinya sendiri yang sempurna mirip. Pembilang Geary mengabaikan diagonal (xᵢ − xᵢ = 0), sehingga C hanya berubah lewat S₀.", FI(obs["queen_B", "I"]), FI(mean(rw[, 1])), FI(-1 / 48), FI(od["I"]))),
+  alt = c(en = "Histogram of Moran's I under rewired neighbours with reference lines", id = "Histogram Moran's I dengan tetangga diacak beserta garis acuan"))
+```
+
+::: en
+**Answer to the diagonal question.** The result depends on where the weights are placed (which pairs are linked), not on how the areas are numbered, how the matrix is scaled, or whether it is symmetric. The diagonal must be zero: a non-zero $w_{ii}$ adds $z_i^2 \ge 0$ to Moran's numerator and manufactures positive autocorrelation.
+:::
+
+::: id
+**Jawaban atas pertanyaan diagonal.** Hasil bergantung pada letak bobot (pasangan mana yang dihubungkan), bukan pada penomoran wilayah, skala matriks, atau simetrinya. Diagonal wajib nol: $w_{ii}$ yang tidak nol menambahkan $z_i^2 \ge 0$ ke pembilang Moran dan menciptakan autokorelasi positif yang semu.
+:::
+
+<h3><span class="en">Design</span><span class="id">Desain</span></h3>
+::: en
+Simulated maps are made from the **real CRIME values**, rearranged according to a pattern we choose. For each replicate: (1) generate a latent surface $y$ from one of five processes, (2) give the largest CRIME value to the area with the largest $y$, the second largest to the second, and so on, (3) test Moran's I and Geary's C under all 32 matrices at α = 0.05. The distribution of values is always exactly that of CRIME; only their arrangement changes. Five processes are used so that no matrix wins just because it matches the process:
+:::
+
+::: id
+Peta simulasi dibuat dari **nilai CRIME yang asli**, yang disusun ulang mengikuti pola yang kita tentukan. Untuk setiap ulangan: (1) bangkitkan permukaan laten $y$ dari salah satu dari lima proses, (2) berikan nilai CRIME terbesar ke wilayah dengan $y$ terbesar, terbesar kedua ke wilayah kedua, dan seterusnya, (3) uji Moran's I dan Geary's C dengan ke-32 matriks pada α = 0,05. Sebaran nilainya selalu sama persis dengan CRIME; hanya susunannya yang berubah. Lima proses dipakai agar tidak ada matriks yang menang hanya karena kebetulan cocok dengan prosesnya:
+:::
+
+```{r t-gens}
+bi_table(function(l) {
+  df <- data.frame(GEN,
+    if (l == "id") c("SAR dengan Queen · W", "SAR dengan k = 4 · W", "SAR dengan pita d ≤ 1,10 · W", "Geostatistik, kovarians e^(−d)", "Tren radial dari DISCBD")
+    else c("SAR on Queen · W", "SAR on k = 4 · W", "SAR on band d ≤ 1.10 · W", "Geostatistical, covariance e^(−d)", "Radial trend from DISCBD"),
+    if (l == "id") c("Klaster antarwilayah yang bersentuhan", "Klaster antartetangga terdekat", "Klaster dalam radius tetap", "Kemiripan meluruh mulus dengan jarak", "Gradien dari pusat kota ke pinggiran")
+    else c("Clusters among touching areas", "Clusters among nearest neighbours", "Clusters within a fixed radius", "Similarity decays smoothly with distance", "Gradient from downtown to the edge"))
+  names(df) <- if (l == "id") c("Kode", "Proses pembangkit", "Bentuk pola") else c("Code", "Generating process", "Shape of the pattern")
+  list(df = df, cap = if (l == "id") "Lima proses pembangkit" else "Five generating processes",
+       foot = if (l == "id") sprintf("SAR: y = (I − ρW)⁻¹ε. Kekuatan setiap proses dikalibrasi agar daya matriks terbaik bernilai 0,30; 0,50; 0,70; 0,90. %s ulangan tanpa pola dan %s ulangan per skenario.", NI(R0), NI(R1))
+              else sprintf("SAR: y = (I − ρW)⁻¹ε. The strength of each process is calibrated so that the best matrix has power 0.30, 0.50, 0.70, 0.90. %s replicates without a pattern and %s per scenario.", NE(R0), NE(R1)))
+}, left = 1:3)
+```
+
+::: en
+The strength of each process is calibrated rather than fixed, because the same $\rho$ means very different pattern strength in different processes. Calibration sets the power of the best matrix to 0.30, 0.50, 0.70 and 0.90, so every scenario is equally hard for the best choice and the comparison is fair.
+:::
+
+::: id
+Kekuatan setiap proses dikalibrasi, bukan ditetapkan, karena $\rho$ yang sama menghasilkan kekuatan pola yang sangat berbeda pada proses yang berbeda. Kalibrasi membuat daya matriks terbaik bernilai 0,30; 0,50; 0,70; dan 0,90, sehingga setiap skenario sama sulitnya bagi pilihan terbaik dan perbandingannya adil.
+:::
+
+<h3><span class="en">Criteria, fixed before the run</span><span class="id">Kriteria, ditetapkan sebelum simulasi</span></h3>
+```{r t-crit}
+bi_table(function(l) {
+  df <- if (l == "id") data.frame(
+    c("K1 Ukuran uji", "K2 Daya rata-rata", "K3 Penyesalan maksimum", "K4 Daya terburuk", "K5 Kesepakatan Moran–Geary"),
+    c("Proporsi H₀ ditolak ketika tidak ada pola", "Proporsi pola terdeteksi, rata-rata atas 5 proses × 4 tingkat kekuatan",
+      "Daya matriks terbaik dikurangi daya matriks ini, diambil yang terburuk dari 20 skenario", "Daya terendah di antara 5 proses pada tingkat 0,50",
+      "Proporsi ulangan dengan keputusan kedua indeks sama"),
+    c("Wajar bila 0,025–0,075 (Bradley, 1978)", "Makin tinggi makin baik", "Makin kecil makin robust", "Makin tinggi makin baik", "Pelengkap"))
+  else data.frame(
+    c("K1 Test size", "K2 Mean power", "K3 Maximum regret", "K4 Worst-case power", "K5 Moran–Geary agreement"),
+    c("Share of H₀ rejected when there is no pattern", "Share of patterns detected, averaged over 5 processes × 4 strengths",
+      "Power of the best matrix minus power of this one, worst of 20 scenarios", "Lowest power across the 5 processes at strength 0.50",
+      "Share of replicates where both indices reach the same decision"),
+    c("Acceptable if 0.025–0.075 (Bradley, 1978)", "Higher is better", "Smaller is more robust", "Higher is better", "Supporting"))
+  names(df) <- if (l == "id") c("Kriteria", "Definisi", "Batas") else c("Criterion", "Definition", "Threshold")
+  list(df = df, cap = if (l == "id") "Kriteria simulasi" else "Simulation criteria")
+}, left = 1:3, wide = c("Definisi", "Definition"))
+```
+
+::: en
+**Classification** (on Moran's I; Geary is classified the same way, separately): **robust** if K1 is acceptable and the maximum regret is at most 0.15, **sensitive** if K1 fails or the maximum regret exceeds 0.30, **intermediate** otherwise. **Recommendation without information**: the matrix with the smallest maximum regret among those with acceptable size (minimax regret). It guarantees the smallest worst-case loss whatever the true process is. The thresholds 0.15 and 0.30 are conventions, so the recommendation is re-checked under other rules below.
+:::
+
+::: id
+**Klasifikasi** (pada Moran's I; Geary diklasifikasi dengan cara yang sama secara terpisah): **robust** bila K1 wajar dan penyesalan maksimum paling besar 0,15, **sensitif** bila K1 tidak wajar atau penyesalan maksimum lebih dari 0,30, **menengah** di antaranya. **Rekomendasi tanpa informasi**: matriks dengan penyesalan maksimum terkecil di antara matriks yang ukuran ujinya wajar (*minimax regret*). Aturan ini menjamin kerugian terburuk paling kecil, apa pun proses yang sebenarnya. Batas 0,15 dan 0,30 adalah konvensi, sehingga rekomendasi diperiksa ulang dengan aturan lain di bawah.
+:::
+
+<h3><span class="en">Checking the simulation itself</span><span class="id">Memeriksa simulasinya sendiri</span></h3>
+```{r t-verify}
+bi_table(function(l) {
+  it <- if (l == "id") c(sprintf("Sebaran nilai data simulasi = sebaran CRIME asli (%s kumpulan data)", NI(R0 + 20 * R1)),
+                         "Rata-rata Moran's I naik monoton terhadap kekuatan pola pada kelima proses",
+                         "Hasil identik bila dijalankan ulang dengan seed yang sama", sprintf("Galat Monte Carlo ukuran uji pada %s ulangan nol (SE)", NI(R0)),
+                         "Keputusan uji analitik = uji permutasi 999 kali (median, 4 W × 300 ulangan)")
+        else c(sprintf("Distribution of simulated values = distribution of CRIME (%s data sets)", NE(R0 + 20 * R1)),
+               "Mean Moran's I rises monotonically with pattern strength in all five processes",
+               "Identical results when rerun with the same seed", sprintf("Monte Carlo error of the size estimate at %s null replicates (SE)", NE(R0)),
+               "Analytic test decision = 999-permutation test decision (median, 4 W × 300 replicates)")
+  res <- c(pass(check_marg, l), pass(mono_ok, l), pass(v3, l), FL(mcse, 4, l), paste0(FL(agree_perm, 1, l), "%"))
+  df <- data.frame(it, res); names(df) <- if (l == "id") c("Pemeriksaan", "Hasil") else c("Check", "Result")
+  list(df = df, cap = if (l == "id") "Uji komputasi atas mesin simulasi" else "Computational checks on the simulation engine")
+}, raw = c("Hasil", "Result"), wide = c("Pemeriksaan", "Check"))
+```
+
+<h3><span class="en">Results</span><span class="id">Hasil</span></h3>
+```{r ex-size}
+splot <- function(l) {
+  d <- size |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W[order(match(crit$W, gM$spec_id))], l)))) |>
+    pivot_longer(c(`Size Moran`, `Size Geary`), names_to = "ix", values_to = "s") |> mutate(ix = sub("Size ", "", ix))
+  ggplot(d, aes(s, lab, colour = ix)) + annotate("rect", xmin = .025, xmax = .075, ymin = -Inf, ymax = Inf, fill = "#16352A") +
+    geom_vline(xintercept = .05, linetype = 2, colour = PAL$faint) + geom_point(size = 2.4, position = position_dodge(width = .5)) +
+    scale_colour_manual(values = c(Moran = PAL$moran, Geary = PAL$geary), name = NULL) +
+    scale_x_continuous(limits = c(0, .1)) +
+    labs(x = if (l == "id") "Proporsi H₀ ditolak tanpa pola (K1)" else "Share of H₀ rejected with no pattern (K1)", y = NULL) + theme_case() + theme(panel.grid.major.y = element_blank())
+}
+exhibit(splot, w = 8.6, h = 8.6,
+  title = c(en = "K1: false alarms when there is nothing to find", id = "K1: alarm palsu saat tidak ada yang dicari"),
+  cap = c(en = sprintf("Test size from %s replicates with no spatial pattern. The green band is Bradley's acceptable range. Moran's I fails K1 under %s; Geary's C under %s.", NE(R0), and_list(spec_lab(k1_bad, "en"), "en"), and_list(spec_lab(k1C_bad, "en"), "en")),
+          id = sprintf("Ukuran uji dari %s ulangan tanpa pola spasial. Pita hijau adalah rentang wajar Bradley. Moran's I gagal K1 pada %s; Geary's C pada %s.", NI(R0), and_list(spec_lab(k1_bad, "id"), "id"), and_list(spec_lab(k1C_bad, "id"), "id"))),
+  alt = c(en = "Dot plot of test size for 32 matrices", id = "Plot titik ukuran uji untuk 32 matriks"))
+```
+
+```{r ex-regret}
+gplotR <- function(l) {
+  d <- crit |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W, l)))) |>
+    select(lab, Kelas, `K3 penyesalan maks Moran`, `K3 penyesalan maks Geary`) |>
+    pivot_longer(starts_with("K3"), names_to = "ix", values_to = "r") |> mutate(ix = ifelse(grepl("Moran", ix), "Moran's I", "Geary's C"))
+  ggplot(d, aes(r, lab, colour = ix)) +
+    annotate("rect", xmin = -Inf, xmax = .15, ymin = -Inf, ymax = Inf, fill = "#143024") + annotate("rect", xmin = .30, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "#3A1C24") +
+    geom_line(aes(group = lab), colour = PAL$faint, linewidth = .4) + geom_point(size = 2.5) +
+    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    labs(x = if (l == "id") "Penyesalan maksimum (K3): daya yang hilang dibanding matriks terbaik, skenario terburuk" else "Maximum regret (K3): power lost against the best matrix, worst scenario", y = NULL) +
+    theme_case() + theme(panel.grid.major.y = element_blank())
+}
+exhibit(gplotR, w = 9, h = 9,
+  title = c(en = "K3: how much power each matrix can lose", id = "K3: seberapa banyak daya yang bisa hilang"),
+  cap = c(en = sprintf("Rows ordered from the most robust (top) for Moran's I. Green: regret ≤ 0.15 (robust). Red: regret > 0.30 (sensitive). The worst matrix, %s, can lose %s of power; the best, %s, at most %s.", lE(worst), FE(max(crit$`K3 penyesalan maks Moran`)), lE(rec_id), FE(rcr$`K3 penyesalan maks Moran`)),
+          id = sprintf("Baris diurutkan dari yang paling robust (atas) untuk Moran's I. Hijau: penyesalan ≤ 0,15 (robust). Merah: penyesalan > 0,30 (sensitif). Matriks terburuk, %s, bisa kehilangan daya %s; yang terbaik, %s, paling banyak %s.", lI(worst), FI(max(crit$`K3 penyesalan maks Moran`)), lI(rec_id), FI(rcr$`K3 penyesalan maks Moran`))),
+  alt = c(en = "Dot plot of maximum regret for Moran and Geary under 32 matrices", id = "Plot titik penyesalan maksimum Moran dan Geary pada 32 matriks"))
+```
+
+```{r t-class}
+bi_table(function(l) {
+  F <- function(x) FL(x, 3, l)
+  df <- data.frame(seq_len(nrow(crit)), spec_lab(crit$W, l), F(crit$`Size Moran`), F(crit$`K2 daya rata-rata Moran`), F(crit$`K3 penyesalan maks Moran`),
+                   F(crit$`K4 daya terburuk (tingkat 0,50) Moran`), F(crit$`K3 penyesalan maks Geary`), F(crit$`K5 kesepakatan`),
+                   vapply(crit$Kelas, badge, "", lang = l), vapply(crit$`Kelas (Geary)`, badge, "", lang = l))
+  names(df) <- if (l == "id") c("#", "Matriks", "K1 ukuran", "K2 daya rata-rata", "K3 penyesalan maks", "K4 daya terburuk", "K3 Geary", "K5 kesepakatan", "Kelas Moran", "Kelas Geary")
+               else c("#", "Matrix", "K1 size", "K2 mean power", "K3 max regret", "K4 worst power", "K3 Geary", "K5 agreement", "Moran class", "Geary class")
+  list(df = df, cap = if (l == "id") "Klasifikasi 32 matriks untuk CRIME (diurutkan menurut K3 Moran)" else "Classification of the 32 matrices for CRIME (ordered by Moran K3)",
+       foot = if (l == "id") sprintf("Baris yang disorot adalah rekomendasi. SE satu nilai daya paling besar %s; SE selisih dua daya sekitar %s, sehingga selisih penyesalan di bawah sekitar %s tidak dapat dibedakan.", FI(se_pow), FI(se_reg), FI(2 * se_reg, 2))
+              else sprintf("The highlighted row is the recommendation. The SE of one power estimate is at most %s; the SE of a difference of two is about %s, so regret differences below about %s cannot be told apart.", FE(se_pow), FE(se_reg), FE(2 * se_reg, 2)))
+}, raw = c("Kelas Moran", "Kelas Geary", "Moran class", "Geary class"), left = 2, hl = crit$W == rec_id)
+```
+
+```{r ex-heat}
+hplot <- function(l) {
+  d <- alt |> filter(level == 0.50) |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W, l))), g = factor(gen, GEN))
+  ggplot(d, aes(g, lab, fill = pow_I)) + geom_tile(colour = PAL$bg, linewidth = .6) +
+    geom_text(aes(label = FL(pow_I, 2, l)), size = 3.1, colour = ifelse(d$pow_I > .45, "#0A101C", PAL$text), family = PF) +
+    scale_fill_gradient(low = "#17243B", high = "#FACC15", limits = c(0, 1), name = if (l == "id") "Daya" else "Power") +
+    scale_x_discrete(labels = if (l == "id") c(G1 = "G1 SAR Queen", G2 = "G2 SAR k = 4", G3 = "G3 SAR pita", G4 = "G4 Geostatistik", G5 = "G5 Tren radial")
+                              else c(G1 = "G1 SAR Queen", G2 = "G2 SAR k = 4", G3 = "G3 SAR band", G4 = "G4 Geostatistical", G5 = "G5 Radial trend")) +
+    labs(x = NULL, y = NULL) + theme_case(11.5) + theme(panel.grid = element_blank(), legend.key.width = unit(1.4, "cm"))
+}
+exhibit(hplot, w = 9, h = 9.4,
+  title = c(en = "Power of Moran's I at medium strength", id = "Daya Moran's I pada kekuatan sedang"),
+  cap = c(en = "Each column is a process calibrated so that the best matrix reaches power 0.50. A robust matrix stays reasonably bright in every column; a sensitive one wins in one column and goes dark in another.",
+          id = "Setiap kolom adalah proses yang dikalibrasi sehingga matriks terbaik mencapai daya 0,50. Matriks robust tetap cukup terang di setiap kolom; matriks sensitif unggul di satu kolom dan gelap di kolom lain."),
+  alt = c(en = "Heatmap of power for 32 matrices and 5 processes", id = "Peta panas daya untuk 32 matriks dan 5 proses"))
+```
+
+```{r ex-curve}
+pick <- unique(c(head(crit$W, 3), tail(crit$W, 3), REF))
+pcurve <- function(l) {
+  d <- alt |> filter(W %in% pick) |> mutate(lab = factor(spec_lab(W, l), spec_lab(pick, l)),
+    g = factor(gen, GEN, if (l == "id") c("G1 SAR Queen", "G2 SAR k = 4", "G3 SAR pita", "G4 Geostatistik", "G5 Tren radial") else c("G1 SAR Queen", "G2 SAR k = 4", "G3 SAR band", "G4 Geostatistical", "G5 Radial trend")))
+  ggplot(d, aes(level, pow_I, colour = lab)) + geom_abline(slope = 1, intercept = 0, linetype = 3, colour = PAL$faint) +
+    geom_line(linewidth = .8) + geom_point(size = 1.6) + facet_wrap(~g, nrow = 1) +
+    scale_colour_manual(values = c("#4ADE80", "#86EFAC", "#BBF7D0", "#FCA5A5", "#F87171", "#DC2626", "#FACC15")[seq_along(pick)], name = NULL) +
+    scale_x_continuous(breaks = LVL, labels = FL(LVL, 1, l)) + coord_equal() +
+    labs(x = if (l == "id") "Daya matriks terbaik" else "Power of the best matrix", y = if (l == "id") "Daya" else "Power") +
+    theme_case(11) + guides(colour = guide_legend(nrow = 2))
+}
+exhibit(pcurve, w = 10, h = 4.6,
+  title = c(en = "Power curves: the three most robust, the three most sensitive, and Queen · W", id = "Kurva daya: tiga paling robust, tiga paling sensitif, dan Queen · W"),
+  cap = c(en = "The dotted diagonal is the best matrix. The vertical gap to it is the regret. Green lines stay close to it in every panel; red lines fall away in at least one.",
+          id = "Diagonal titik-titik adalah matriks terbaik. Jarak vertikal ke garis itu adalah penyesalan. Garis hijau tetap dekat di setiap panel; garis merah menjauh setidaknya pada satu panel."),
+  alt = c(en = "Power curves by generating process for seven matrices", id = "Kurva daya per proses pembangkit untuk tujuh matriks"))
+```
+
+```{r t-rules}
+bi_table(function(l) {
+  df <- data.frame(if (l == "id") sens_rule[[1]] else c("Maximum regret (main rule)", "Mean regret", "90th percentile of regret", "Weak to medium patterns only (strength ≤ 0.50)"),
+                   vapply(sens_rule[[2]], relabel_list, "", lang = l))
+  names(df) <- if (l == "id") c("Aturan pemilihan", "Tiga teratas (Moran's I)") else c("Selection rule", "Top three (Moran's I)")
+  list(df = df, cap = if (l == "id") "Apakah rekomendasi bergantung pada aturan?" else "Does the recommendation depend on the rule?")
+}, left = 1:2, wide = c("Tiga teratas (Moran's I)", "Top three (Moran's I)"))
+```
+
+<div class="note">
+<span class="t"><span class="en">Answer to the revision</span><span class="id">Jawaban atas revisi</span></span>
+
+::: en
+* **Use when nothing is known: `r lE(rec_id)`.** Its size is acceptable (`r FE(rcr[["Size Moran"]])`) and its maximum regret is the smallest (`r FE(rcr[["K3 penyesalan maks Moran"]])`): whatever process produced CRIME's pattern, it loses at most that much power against the best possible matrix.
+* **For Geary's C:** `r lE(rec_C)` (maximum regret `r FE(rcC[["K3 penyesalan maks Geary"]])`). **For both indices together:** `r and_list(spec_lab(rjI, "en"), "en")`.
+* **Robust** for Moran (`r length(rob_ids)`): `r and_list(spec_lab(rob_ids, "en"), "en")`.
+* **Intermediate** (`r length(mid_ids)`): `r and_list(spec_lab(mid_ids, "en"), "en")`.
+* **Sensitive** (`r length(sen_ids)`): `r and_list(spec_lab(sen_ids, "en"), "en")`.
+* **Robust for both indices:** `r and_list(spec_lab(rbR, "en"), "en")`. **Sensitive for both:** `r and_list(spec_lab(rbS, "en"), "en")`.
+* **`r lE(REF)`**, the usual default and the reference above, is `r tolower(c(Robust = "robust", Menengah = "intermediate", Sensitif = "sensitive")[qW$Kelas])` (maximum regret `r FE(qW[["K3 penyesalan maks Moran"]])`). It remains a sound choice when there is a substantive reason to think crime spreads across shared borders; without such a reason, it is not the safest one.
+:::
+
+::: id
+* **Dipakai bila tidak ada informasi: `r lI(rec_id)`.** Ukuran ujinya wajar (`r FI(rcr[["Size Moran"]])`) dan penyesalan maksimumnya paling kecil (`r FI(rcr[["K3 penyesalan maks Moran"]])`): apa pun proses yang membentuk pola CRIME, matriks ini paling banyak kehilangan daya sebesar itu dibanding matriks terbaik.
+* **Untuk Geary's C:** `r lI(rec_C)` (penyesalan maksimum `r FI(rcC[["K3 penyesalan maks Geary"]])`). **Untuk kedua indeks bersama:** `r and_list(spec_lab(rjI, "id"), "id")`.
+* **Robust** untuk Moran (`r length(rob_ids)`): `r and_list(spec_lab(rob_ids, "id"), "id")`.
+* **Menengah** (`r length(mid_ids)`): `r and_list(spec_lab(mid_ids, "id"), "id")`.
+* **Sensitif** (`r length(sen_ids)`): `r and_list(spec_lab(sen_ids, "id"), "id")`.
+* **Robust untuk kedua indeks:** `r and_list(spec_lab(rbR, "id"), "id")`. **Sensitif untuk keduanya:** `r and_list(spec_lab(rbS, "id"), "id")`.
+* **`r lI(REF)`**, pilihan bawaan yang umum dan acuan di atas, tergolong `r tolower(qW$Kelas)` (penyesalan maksimum `r FI(qW[["K3 penyesalan maks Moran"]])`). Matriks ini tetap wajar bila ada alasan substantif bahwa kejahatan menyebar lewat batas wilayah; tanpa alasan itu, ia bukan pilihan paling aman.
+:::
+</div>
+
+::: en
+The pattern behind the ranking: matrices in the middle (weights that decay smoothly such as $1/d$, moderate bands, $k$ around 5 to 8) still see local clusters and still see broad trends. Matrices at the extremes miss one of them: $k = 2$ is too narrow to see the downtown gradient (G5), wide binary bands are too broad to see local clusters (G1, G2), and raw $1/d^2$ is dominated by the closest pairs and loses power almost everywhere.
+:::
+
+::: id
+Pola di balik peringkat ini: matriks di tengah (bobot yang meluruh halus seperti $1/d$, pita sedang, $k$ sekitar 5 sampai 8) masih menangkap klaster lokal dan juga tren luas. Matriks di ujung kehilangan salah satunya: $k = 2$ terlalu sempit untuk menangkap gradien pusat kota (G5), pita biner yang lebar terlalu luas untuk menangkap klaster lokal (G1, G2), dan $1/d^2$ mentah didominasi pasangan terdekat sehingga dayanya rendah hampir di semua proses.
+:::
+</section>
+
+<section class="chap" id="practice">
+<h2><span class="en">What to do instead</span><span class="id">Yang sebaiknya dilakukan</span></h2>
+
+<ul class="rules">
+<li><strong><span class="en">Choose W before looking at the result, and write down why.</span><span class="id">Pilih W sebelum melihat hasil, dan tuliskan alasannya.</span></strong><span class="en">The reason should be about how the process spreads (shared borders, travel distance, a fixed radius), not about which W gives the smallest p.</span><span class="id">Alasannya harus tentang cara proses itu menyebar (batas bersama, jarak tempuh, radius tetap), bukan tentang W mana yang memberi p terkecil.</span></li>
+<li><strong><span class="en">Without a reason, start from the minimax-regret matrix.</span><span class="id">Tanpa alasan, mulai dari matriks minimax regret.</span></strong><span class="en">For CRIME in Columbus that is `r lE(rec_id)`. For other data, run the same simulation on your own variable; the ranking can change.</span><span class="id">Untuk CRIME di Columbus, matriks itu adalah `r lI(rec_id)`. Untuk data lain, jalankan simulasi yang sama pada variabel sendiri; peringkatnya bisa berubah.</span></li>
+<li><strong><span class="en">Report a range of W, not one.</span><span class="id">Laporkan beberapa W, bukan satu.</span></strong><span class="en">Show at least one matrix from each family. If the verdict changes across them, the verdict is the finding.</span><span class="id">Tampilkan setidaknya satu matriks dari setiap keluarga. Bila putusannya berubah, perubahan itulah temuannya.</span></li>
+<li><strong><span class="en">Keep the diagonal at zero.</span><span class="id">Pastikan diagonal bernilai nol.</span></strong><span class="en">A non-zero w&#7522;&#7522; inflates Moran's I. Check it whenever W is built by hand or imported.</span><span class="id">w&#7522;&#7522; yang tidak nol menggelembungkan Moran's I. Periksa setiap kali W dibangun manual atau diimpor.</span></li>
+<li><strong><span class="en">Treat LISA maps as fragile.</span><span class="id">Perlakukan peta LISA sebagai hasil yang rapuh.</span></strong><span class="en">Correct for 49 simultaneous tests (FDR), use conditional permutation without replacement, and show which clusters persist across matrices. A cluster seen under one W only is not evidence.</span><span class="id">Koreksi untuk 49 uji sekaligus (FDR), pakai permutasi bersyarat tanpa pengembalian, dan tunjukkan klaster mana yang bertahan di berbagai matriks. Klaster yang hanya muncul pada satu W bukan bukti.</span></li>
+<li><strong><span class="en">Read Moran and Geary together.</span><span class="id">Baca Moran dan Geary bersama-sama.</span></strong><span class="en">When they disagree, look for extreme clustered values or a signal near the threshold before reporting either one.</span><span class="id">Bila keduanya tidak sepakat, periksa nilai ekstrem yang mengelompok atau sinyal yang dekat ambang sebelum melaporkan salah satunya.</span></li>
+<li><strong><span class="en">Report the Monte Carlo uncertainty of p near 0.05.</span><span class="id">Laporkan ketidakpastian Monte Carlo pada p di sekitar 0,05.</span></strong><span class="en">A permutation p of 0.048 with a standard error of 0.002 is not a clear rejection.</span><span class="id">p permutasi 0,048 dengan galat baku 0,002 bukan penolakan yang tegas.</span></li>
+</ul>
+</section>
+
+<section class="chap" id="limits">
+<h2><span class="en">Limits</span><span class="id">Keterbatasan</span></h2>
+
+::: en
+* With $n = 49$, local tests have little power, so an empty LISA map does not prove there are no clusters.
+* Robustness is measured against five chosen processes. Very different patterns, such as negative autocorrelation or distant clusters, are not covered.
+* The simulation is for CRIME only. Strongly skewed variables (PLUMB, OPEN) may rank the matrices differently.
+* The classification thresholds 0.15 and 0.30 are conventions, stated in advance; the rule-sensitivity table shows how much the top of the ranking depends on them.
+* Distances are in arbitrary map units. Results are invariant to rescaling distances, but not to the choice of reference point (polygon centroid versus Anselin's X/Y points), which changes some KNN neighbours.
+:::
+
+::: id
+* Dengan $n = 49$, daya uji lokal kecil, sehingga peta LISA yang kosong tidak membuktikan bahwa tidak ada klaster.
+* Robustness diukur terhadap lima proses yang dipilih. Pola yang sangat berbeda, seperti autokorelasi negatif atau klaster yang berjauhan, tidak tercakup.
+* Simulasi hanya untuk CRIME. Variabel yang sangat menceng (PLUMB, OPEN) bisa menghasilkan peringkat matriks yang berbeda.
+* Batas klasifikasi 0,15 dan 0,30 adalah konvensi yang ditetapkan di awal; tabel kepekaan aturan menunjukkan seberapa jauh peringkat teratas bergantung padanya.
+* Jarak memakai satuan peta yang arbitrer. Hasil invarian terhadap perubahan skala jarak, tetapi tidak terhadap pilihan titik acuan (centroid poligon atau titik X/Y Anselin), yang mengubah sebagian tetangga KNN.
+:::
+</section>
+
+<section class="chap" id="repro">
+<h2><span class="en">Reproduce and references</span><span class="id">Reproduksi dan referensi</span></h2>
+
+::: en
+Knit `Columbus_Spatial_Analysis.Rmd` in RStudio, or run `rmarkdown::render("Columbus_Spatial_Analysis.Rmd", output_dir = "reports")`. One knit runs every computation (`analysis/core.Rmd`, `analysis/simulation.Rmd`), writes the CSV, PNG, RDS and JSON files in `output/`, rebuilds `dashboard_html/index.html`, and produces this page. Seeds are fixed (`r SEED` for the study, `r SIM_SEED` for the simulation), so two knits give byte-identical CSV files. Use the EN / ID switch at the top to change the language; the link `?lang=id` opens the Indonesian version directly.
+:::
+
+::: id
+Knit `Columbus_Spatial_Analysis.Rmd` di RStudio, atau jalankan `rmarkdown::render("Columbus_Spatial_Analysis.Rmd", output_dir = "reports")`. Satu kali knit menjalankan seluruh komputasi (`analysis/core.Rmd`, `analysis/simulation.Rmd`), menulis berkas CSV, PNG, RDS, dan JSON di `output/`, membangun ulang `dashboard_html/index.html`, dan menghasilkan halaman ini. Seed ditetapkan (`r SEED` untuk studi, `r SIM_SEED` untuk simulasi), sehingga dua kali knit menghasilkan berkas CSV yang identik byte per byte. Gunakan tombol EN / ID di atas untuk mengganti bahasa; tautan `?lang=id` langsung membuka versi bahasa Indonesia.
+:::
+
+* Anselin, L. (1988). *Spatial Econometrics: Methods and Models*. Dordrecht: Kluwer Academic.
+* Anselin, L. (1995). Local indicators of spatial association: LISA. *Geographical Analysis, 27*(2), 93–115.
+* Anselin, L. (2019). A local indicator of multivariate spatial association: Extending Geary's c. *Geographical Analysis, 51*(2), 133–150.
+* Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate. *Journal of the Royal Statistical Society B, 57*(1), 289–300.
+* Bivand, R. S., & Wong, D. W. S. (2018). Comparing implementations of global and local indicators of spatial association. *TEST, 27*(3), 716–748.
+* Bradley, J. V. (1978). Robustness? *British Journal of Mathematical and Statistical Psychology, 31*(2), 144–152.
+* Cliff, A. D., & Ord, J. K. (1981). *Spatial Processes: Models and Applications*. London: Pion.
+* Geary, R. C. (1954). The contiguity ratio and statistical mapping. *The Incorporated Statistician, 5*(3), 115–145.
+* Moran, P. A. P. (1950). Notes on continuous stochastic phenomena. *Biometrika, 37*(1/2), 17–23.
+* Ord, J. K., & Getis, A. (1995). Local spatial autocorrelation statistics. *Geographical Analysis, 27*(4), 286–306.
+* Pebesma, E. (2018). Simple features for R. *The R Journal, 10*(1), 439–446.
+* GeoDa Center. *Columbus Crime 1980*. <https://geodacenter.github.io/data-and-lab/columbus/>
+
+```{r session}
+cat('<details class="more"><summary><span class="en">R session</span><span class="id">Sesi R</span></summary><div><pre>',
+    esc(paste(capture.output(sessionInfo()), collapse = "\n")), '</pre></div></details>\n')
+```
+</section>
+
+</main>
+</div>
+
+<footer><div class="wrap">
+<p><span class="en">Data: Anselin (1988), Table 12.1, via the GeoDa Center Columbus shapefile. Computed in R with spdep and sf. 9,999 permutations per test, α = 0.05.</span><span class="id">Data: Anselin (1988), Tabel 12.1, melalui shapefile Columbus dari GeoDa Center. Dihitung di R dengan spdep dan sf. 9.999 permutasi per uji, α = 0,05.</span></p>
+<p>Febrianggi Caesar Immanuel, Universitas Padjadjaran.</p>
+</div></footer>

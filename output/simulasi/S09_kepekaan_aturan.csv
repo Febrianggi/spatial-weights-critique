@@ -1,0 +1,5 @@
+"Aturan pemilihan","Tiga teratas"
+"Penyesalan maksimum (utama)","1/d · W; 1/d · mentah; d ≤ 0,90 · W"
+"Penyesalan rata-rata","1/d · W; d ≤ 0,90 · W; k = 5 · B"
+"Persentil ke-90 penyesalan","1/d · W; d ≤ 0,90 · W; 1/d · mentah"
+"Hanya pola lemah–sedang (tingkat ≤ 0,50)","1/d · W; d ≤ 0,90 · W; 1/d · mentah"

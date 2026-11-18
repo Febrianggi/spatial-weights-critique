@@ -1,0 +1,6 @@
+"Perbandingan","Hasil"
+"Atribut GeoDa vs spData shp: maks |selisih| (20 kolom)","0"
+"Jumlah verteks geometri (GeoDa | spData)","1196 | 1196"
+"Koordinat verteks: maks |selisih|","0"
+"6 variabel + X, Y: GeoDa vs tabel ketik-ulang Anselin (spData::columbus)","0"
+"Urutan baris: POLYID GeoDa = urutan tabel Anselin","TRUE"

@@ -1,0 +1,38 @@
+"Spesifikasi","Variabel","Sig. p mentah, v1 (dgn pengembalian)","Sig. p mentah, v2","Sig. FDR, v1","Sig. FDR, v2"
+"Queen · W","HOVAL",5,5,0,0
+"Queen · W","INC",12,14,2,3
+"Queen · W","CRIME",13,15,0,4
+"Queen · W","OPEN",2,2,0,0
+"Queen · W","PLUMB",13,13,1,8
+"Queen · W","DISCBD",19,19,4,9
+"Queen · B","CRIME",14,15,2,5
+"Rook · B","CRIME",8,12,0,3
+"Rook · W","CRIME",8,11,0,4
+"k = 2 · B","CRIME",2,2,0,0
+"k = 2 · W","CRIME",2,2,0,0
+"k = 3 · B","CRIME",8,9,0,0
+"k = 3 · W","CRIME",8,9,0,0
+"k = 4 · B","CRIME",18,20,0,0
+"k = 4 · W","CRIME",17,21,0,0
+"k = 5 · B","CRIME",22,24,0,18
+"k = 5 · W","CRIME",22,24,0,18
+"k = 6 · B","CRIME",25,25,10,12
+"k = 6 · W","CRIME",24,26,9,12
+"k = 8 · B","CRIME",14,15,11,13
+"k = 8 · W","CRIME",13,16,11,13
+"d ≤ 0.62 · B","CRIME",15,16,11,11
+"d ≤ 0.62 · W","CRIME",15,16,10,11
+"d ≤ 0.75 · B","CRIME",19,20,9,15
+"d ≤ 0.75 · W","CRIME",19,20,9,15
+"d ≤ 0.90 · B","CRIME",23,27,8,23
+"d ≤ 0.90 · W","CRIME",23,27,8,21
+"d ≤ 1.10 · B","CRIME",23,28,12,22
+"d ≤ 1.10 · W","CRIME",22,28,13,21
+"d ≤ 1.35 · B","CRIME",25,32,17,22
+"d ≤ 1.35 · W","CRIME",25,32,18,22
+"d ≤ 1.65 · B","CRIME",24,32,0,30
+"d ≤ 1.65 · W","CRIME",24,32,0,30
+"1/d · B","CRIME",13,21,0,21
+"1/d · W","CRIME",13,21,0,21
+"1/d² · B","CRIME",14,19,6,15
+"1/d² · W","CRIME",14,19,10,14

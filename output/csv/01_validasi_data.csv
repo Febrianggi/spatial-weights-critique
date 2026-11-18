@@ -1,0 +1,11 @@
+"Pemeriksaan","Hasil"
+"Jumlah wilayah = 49",TRUE
+"20 atribut kodebuku GeoDa lengkap",TRUE
+"Tidak ada missing value pada 6 variabel",TRUE
+"Semua variabel analisis numerik",TRUE
+"Semua geometri valid",TRUE
+"Tidak ada geometri kosong",TRUE
+"Tipe geometri poligon",TRUE
+"POLYID unik 1–49",TRUE
+"Obs. 1 cocok Tabel 12.1 Anselin (HOVAL 80,467; INC 19,531; CRIME 15,726)",TRUE
+"CRS terdefinisi",FALSE

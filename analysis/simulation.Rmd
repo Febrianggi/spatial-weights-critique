@@ -1,0 +1,304 @@
+<!--
+Revision chapter: robustness simulation of the 32 weights matrices for CRIME.
+Included by Columbus_Spatial_Analysis.Rmd after analysis/core.Rmd, with include = FALSE.
+Writes output/simulasi/ and output/rds/simulasi_crime.rds, and injects the results into dashboard_html/index.html.
+-->
+
+```{r sim-setup}
+# Bab revisi: simulasi robustness matriks bobot untuk satu variabel (CRIME).
+# Bisa dijalankan sebagai bab dalam Rmd utama (objek LW, col sudah ada) atau berdiri sendiri.
+suppressPackageStartupMessages({ library(sf); library(spdep); library(dplyr); library(tidyr); library(ggplot2); library(knitr) })
+if (!exists("LW"))  LW  <- readRDS("output/rds/weights_listw.rds")
+if (!exists("col") || !inherits(col, "sf")) col <- st_read("data/geoda_sal/columbus.shp", quiet = TRUE)
+if (!exists("kt"))  kt  <- function(df, digits = 4, ...) kable(df, digits = digits, format.args = list(big.mark = ""), ...)
+f2 <- function(v, d = 3) formatC(v, format = "f", digits = d, decimal.mark = ",")
+SIM_OUT <- file.path("output", "simulasi"); dir.create(SIM_OUT, recursive = TRUE, showWarnings = FALSE)
+sim_csv <- function(df, name) write.csv(df, file.path(SIM_OUT, paste0(name, ".csv")), row.names = FALSE)
+sim_png <- function(p, name, w = 9, h = 6) ggsave(file.path(SIM_OUT, paste0(name, ".png")), p, width = w, height = h, dpi = 150, bg = "white")
+
+SIM_SEED <- 20261117L; A <- 0.05
+x0  <- col$CRIME; n <- length(x0)
+ids <- names(LW); Wd <- lapply(LW, listw2mat)
+lab <- setNames(sub("_B$", " · B", sub("_W$", " · W", ids)), ids)
+lab <- setNames(c("Queen · B","Queen · W","Rook · B","Rook · W",
+                  paste0("k = ", rep(c(2,3,4,5,6,8), each = 2), c(" · B"," · W")),
+                  paste0("d ≤ ", rep(c("0,62","0,75","0,90","1,10","1,35","1,65"), each = 2), c(" · B"," · W")),
+                  "1/d · mentah","1/d · W","1/d² · mentah","1/d² · W"), ids)
+fam <- setNames(rep(c("Contiguity","KNN","Distance band","Inverse distance"), c(4,12,12,4)), ids)
+
+# I dan C tervektorisasi untuk banyak kumpulan data sekaligus (kolom X = satu kumpulan data)
+stat_IC <- function(W, X) {
+  Z <- sweep(X, 2, colMeans(X)); m2 <- colSums(Z^2); S0 <- sum(W)
+  q <- colSums(Z * (W %*% Z)); rc <- rowSums(W) + colSums(W)
+  list(I = n / S0 * q / m2, C = (n - 1) / (2 * S0) * (colSums(rc * Z^2) - 2 * q) / m2)
+}
+# Momen randomisasi. Semua data simulasi adalah susunan ulang nilai CRIME, sehingga kurtosis
+# (dan karenanya E dan Var di bawah H0 randomisasi) sama untuk setiap ulangan: cukup dihitung sekali per W.
+mom <- t(sapply(ids, function(id) {
+  m <- moran.test(x0, LW[[id]], randomisation = TRUE, zero.policy = TRUE)$estimate
+  g <- geary.test(x0, LW[[id]], randomisation = TRUE, zero.policy = TRUE)$estimate
+  c(EI = m[[2]], sdI = sqrt(m[[3]]), EC = g[[2]], sdC = sqrt(g[[3]]))
+}))
+```
+
+```{r sim-tests}
+set.seed(SIM_SEED)
+Q  <- Wd[["queen_B"]]; QW <- Wd[["queen_W"]]
+one <- function(W, x) { s <- stat_IC(W, matrix(x)); c(I = s$I, C = s$C) }
+obs <- t(sapply(ids, function(id) one(Wd[[id]], x0)))
+
+# U1. Implementasi = spdep
+u1 <- max(sapply(ids, function(id) max(abs(obs[id, "I"] - moran(x0, LW[[id]], n, Szero(LW[[id]]), zero.policy = TRUE)$I),
+                                       abs(obs[id, "C"] - geary(x0, LW[[id]], n, n - 1, Szero(LW[[id]]), zero.policy = TRUE)$C))))
+# U2. Label: ubah urutan wilayah pada x dan W secara bersamaan (P x, P W P')
+u2 <- max(sapply(1:200, function(r) { p <- sample(n); max(sapply(ids, function(id) max(abs(one(Wd[[id]][p, p], x0[p]) - obs[id, ])))) }))
+# U3. Letak: susunan ulang tetangga. Jumlah tetangga tiap wilayah dipertahankan, tetapi siapa tetangganya diacak.
+rewire <- function(W) { R <- matrix(0, n, n); for (i in 1:n) { k <- sum(W[i, ] > 0); R[i, sample(setdiff(1:n, i), k)] <- 1 }; R }
+rw <- t(replicate(999, one(rewire(Q), x0)))
+# U4. Diagonal: w_ii = 1 pada Queen biner
+QD <- Q + diag(n); od <- one(QD, x0); z <- x0 - mean(x0)
+u4_I_pred <- n / sum(QD) * (sum(z * (Q %*% z)) + sum(z^2)) / sum(z^2)     # I dengan diagonal (rumus)
+u4_C_pred <- obs["queen_B", "C"] * sum(Q) / sum(QD)                         # C hanya berubah lewat S0
+# U5. Simetrisasi (W + W')/2 dan U6. skala c·W
+u5 <- max(sapply(ids, function(id) max(abs(one((Wd[[id]] + t(Wd[[id]])) / 2, x0) - obs[id, ]))))
+u6 <- max(sapply(ids, function(id) max(abs(one(7.3 * Wd[[id]], x0) - obs[id, ]))))
+# U7. Momen randomisasi analitik vs momen 9.999 permutasi
+P <- replicate(9999, sample(x0))
+emp <- t(sapply(ids, function(id) { s <- stat_IC(Wd[[id]], P); c(mean(s$I), sd(s$I), mean(s$C), sd(s$C)) }))
+u7 <- max(abs(emp[, c(2, 4)] / mom[, c("sdI", "sdC")] - 1))
+
+comp <- data.frame(
+  Uji = c("U1 Implementasi tervektorisasi = spdep (32 W)",
+          "U2 Label: ubah urutan wilayah pada x dan W bersamaan (200 kali × 32 W)",
+          "U3 Letak: tetangga Queen diacak, jumlah tetangga tetap (999 kali)",
+          "U4a Diagonal w_ii = 1 pada Queen: Moran's I",
+          "U4b Diagonal w_ii = 1 pada Queen: Geary's C",
+          "U5 Simetrisasi (W + W')/2 (32 W)",
+          "U6 Skala 7,3 · W (32 W)",
+          "U7 SD analitik vs SD 9.999 permutasi (32 W, I dan C)"),
+  Hasil = c(sprintf("maks |selisih| = %.1e", u1),
+            sprintf("maks |selisih| = %.1e", u2),
+            sprintf("I: %s → rata-rata %s (SD %s); C: %s → %s",
+                    f2(obs["queen_B","I"]), f2(mean(rw[,1])), f2(sd(rw[,1])), f2(obs["queen_B","C"]), f2(mean(rw[,2]))),
+            sprintf("%s → %s (rumus: %s)", f2(obs["queen_B","I"]), f2(od["I"]), f2(u4_I_pred)),
+            sprintf("%s → %s (= C × S0/S0' = %s)", f2(obs["queen_B","C"]), f2(od["C"]), f2(u4_C_pred)),
+            sprintf("maks |selisih| = %.1e", u5),
+            sprintf("maks |selisih| = %.1e", u6),
+            sprintf("maks |rasio − 1| = %s", f2(u7, 3))),
+  Kesimpulan = c("Lulus", "Tidak bergantung pada label",
+                 "Bergantung pada letak", "Bergantung pada diagonal",
+                 "Pembilang tidak bergantung pada diagonal", "Hanya bagian simetris yang dipakai",
+                 "Tidak bergantung pada skala", "Momen analitik sah dipakai"))
+kt(comp)
+sim_csv(comp, "S01_uji_komputasi")
+```
+
+```{r sim-run}
+GEN  <- c("G1", "G2", "G3", "G4", "G5")
+glab <- c(G1 = "G1 SAR Queen", G2 = "G2 SAR k = 4", G3 = "G3 SAR pita 1,10", G4 = "G4 Geostatistik", G5 = "G5 Tren radial")
+gW   <- c(G1 = "queen_W", G2 = "knn4_W", G3 = "band110_W")
+LVL  <- c(0.30, 0.50, 0.70, 0.90); R0 <- 5000L; R1 <- 1000L
+xs   <- sort(x0); dis <- as.numeric(scale(col$DISCBD))
+Dm   <- as.matrix(dist(st_coordinates(st_centroid(st_geometry(col)))))
+Lg   <- t(chol(exp(-Dm / 1)))
+to_crime <- function(Y) apply(Y, 2, function(y) xs[rank(y, ties.method = "first")])
+gen_X <- function(g, s, R) {
+  E <- matrix(rnorm(n * R), n, R)
+  Y <- switch(g, G4 = sqrt(s) * Lg %*% matrix(rnorm(n * R), n, R) + sqrt(1 - s) * E,
+                 G5 = -s * dis + sqrt(1 - s^2) * E,
+                 solve(diag(n) - s * Wd[[gW[g]]], E))
+  to_crime(Y)
+}
+test_all <- function(X) {               # keputusan untuk 32 W: +1 positif, -1 negatif, 0 tidak signifikan
+  zc <- qnorm(1 - A / 2)
+  do.call(rbind, lapply(ids, function(id) {
+    s <- stat_IC(Wd[[id]], X)
+    zI <- (s$I - mom[id, "EI"]) / mom[id, "sdI"]; zC <- (mom[id, "EC"] - s$C) / mom[id, "sdC"]
+    data.frame(W = id, dI = sign(zI) * (abs(zI) > zc), dC = sign(zC) * (abs(zC) > zc), I = s$I, C = s$C)
+  }))
+}
+summ <- function(d, g, lv, par) d |> group_by(W) |>
+  summarise(rej_I = mean(dI != 0), pow_I = mean(dI == 1), rej_C = mean(dC != 0), pow_C = mean(dC == 1),
+            agree = mean(dI == dC), mean_I = mean(I), mean_C = mean(C), .groups = "drop") |>
+  mutate(gen = g, level = lv, param = par)
+
+# Kalibrasi: untuk tiap pembangkit, cari parameter kekuatan yang membuat daya Moran terbaik = 0,30/0,50/0,70/0,90
+set.seed(SIM_SEED)
+GRID <- seq(0.05, 0.95, by = 0.05)
+cal_grid <- bind_rows(lapply(GEN, function(g) bind_rows(lapply(GRID, function(s)
+  data.frame(gen = g, param = s, oracle = max(summ(test_all(gen_X(g, s, 500)), g, NA, s)$pow_I))))))
+cal <- bind_rows(lapply(GEN, function(g) { d <- filter(cal_grid, gen == g)
+  data.frame(gen = g, level = LVL, param = approx(cummax(d$oracle), d$param, xout = LVL, ties = "ordered")$y) }))
+
+set.seed(SIM_SEED + 2)
+null_X <- replicate(R0, sample(x0)); res <- list(summ(test_all(null_X), "H0", 0, 0))
+check_marg <- all(apply(null_X, 2, function(v) identical(sort(v), xs)))
+for (k in seq_len(nrow(cal))) {
+  X <- gen_X(cal$gen[k], cal$param[k], R1)
+  check_marg <- check_marg && all(apply(X, 2, function(v) identical(sort(v), xs)))
+  res[[length(res) + 1]] <- summ(test_all(X), cal$gen[k], cal$level[k], cal$param[k])
+}
+sim <- bind_rows(res) |> mutate(label = lab[W], family = fam[W])
+cal_out <- sim |> filter(gen != "H0") |> group_by(gen, level, param) |>
+  summarise(`Daya terbaik tercapai` = max(pow_I), `Matriks terbaik` = lab[W[which.max(pow_I)]], .groups = "drop") |>
+  transmute(Pembangkit = glab[gen], `Target daya terbaik` = level, `Parameter kekuatan` = param,
+            `Daya terbaik tercapai`, `Matriks terbaik`)
+kt(cal_out, 3)
+sim_csv(cal_out, "S02a_kalibrasi_kekuatan"); sim_csv(cal_grid, "S02b_grid_kalibrasi"); sim_csv(sim, "S02_hasil_simulasi_lengkap")
+```
+
+```{r sim-verify}
+# V1. Uji analitik vs uji permutasi 999 kali pada 300 ulangan nol untuk 4 matriks
+set.seed(SIM_SEED + 1)
+perm_p <- function(W, x, R = 999) { s0 <- stat_IC(W, matrix(x)); s <- stat_IC(W, replicate(R, sample(x)))
+  c(pI = min(1, 2 * min(mean(c(s$I, s0$I) >= s0$I), mean(c(s$I, s0$I) <= s0$I))),
+    pC = min(1, 2 * min(mean(c(s$C, s0$C) >= s0$C), mean(c(s$C, s0$C) <= s0$C)))) }
+chkW <- c("queen_W", "knn4_W", "band110_B", "idw2_B")
+v1 <- bind_rows(lapply(chkW, function(id) {
+  pp <- t(sapply(1:300, function(r) perm_p(Wd[[id]], null_X[, r])))
+  aa <- test_all(null_X[, 1:300]) |> filter(W == id)
+  data.frame(W = lab[id], `Size permutasi I` = mean(pp[, "pI"] <= A), `Size analitik I` = mean(aa$dI != 0),
+             `Keputusan I sama (%)` = 100 * mean((pp[, "pI"] <= A) == (aa$dI != 0)),
+             `Size permutasi C` = mean(pp[, "pC"] <= A), `Size analitik C` = mean(aa$dC != 0),
+             `Keputusan C sama (%)` = 100 * mean((pp[, "pC"] <= A) == (aa$dC != 0)), check.names = FALSE)
+}))
+# V2. Moran rata-rata naik monoton terhadap kekuatan pola pada matriks pembangkitnya sendiri
+v2 <- sim |> filter(gen != "H0") |> group_by(gen, level) |> summarise(m = mean(mean_I), .groups = "drop") |>
+  arrange(gen, level) |> group_by(gen) |> summarise(`Monoton naik` = all(diff(m) > 0),
+  `Rata-rata I (tingkat 0,30)` = first(m), `Rata-rata I (tingkat 0,90)` = last(m)) |> mutate(gen = glab[gen])
+# V3. Reprodusibilitas: skenario G1, rho = 0,30 diulang dengan seed yang sama
+rep_once <- function() { set.seed(99); E <- matrix(rnorm(n * 200), n, 200)
+  test_all(to_crime(solve(diag(n) - 0.3 * Wd[["queen_W"]], E))) }
+v3 <- identical(rep_once(), rep_once())
+mcse <- sqrt(A * (1 - A) / R0)
+verify <- data.frame(
+  Pemeriksaan = c("Sebaran nilai data simulasi = sebaran CRIME asli (25.000 kumpulan data)",
+                  "Rata-rata Moran's I (32 W) naik monoton terhadap tingkat kekuatan pada kelima pembangkit",
+                  "Hasil identik bila dijalankan ulang dengan seed yang sama",
+                  "Galat Monte Carlo size pada 5.000 ulangan nol (SE)",
+                  "Kesesuaian keputusan uji analitik vs permutasi 999 kali (median, 4 W × 300 ulangan)"),
+  Hasil = c(check_marg, all(v2$`Monoton naik`), v3, f2(mcse, 4),
+            paste0(f2(median(c(v1[[4]], v1[[7]])), 1), "%")))
+kt(verify); kt(v1, 3); kt(v2, 3)
+sim_csv(verify, "S03_uji_komputasi_simulasi"); sim_csv(v1, "S04_analitik_vs_permutasi")
+```
+
+```{r sim-size}
+size <- sim |> filter(gen == "H0") |> transmute(W, Spesifikasi = label, Keluarga = family,
+  `Size Moran` = rej_I, `Size Geary` = rej_C,
+  `K1 Moran` = ifelse(between(rej_I, .025, .075), "Wajar", "Tidak wajar"),
+  `K1 Geary` = ifelse(between(rej_C, .025, .075), "Wajar", "Tidak wajar"))
+kt(size[, -1], 3)
+p_size <- size |> pivot_longer(c(`Size Moran`, `Size Geary`), names_to = "Indeks", values_to = "s") |>
+  mutate(Indeks = sub("Size ", "", Indeks), Spesifikasi = factor(Spesifikasi, rev(lab))) |>
+  ggplot(aes(s, Spesifikasi, colour = Indeks)) +
+  annotate("rect", xmin = .025, xmax = .075, ymin = -Inf, ymax = Inf, fill = "#e8f5e9") +
+  geom_vline(xintercept = .05, linetype = 2, colour = "grey50") + geom_point(size = 2.2) +
+  scale_colour_manual(values = c(Moran = "#1f3a5f", Geary = "#b9461b")) +
+  labs(title = "K1: ukuran uji pada skenario tanpa pola (5.000 ulangan)",
+       subtitle = "Pita hijau = rentang wajar Bradley (0,025–0,075)", x = "Proporsi H₀ ditolak", y = NULL)
+p_size; sim_png(p_size, "S05_ukuran_uji", 8, 8)
+```
+
+```{r sim-power, fig.height = 9}
+alt <- sim |> filter(gen != "H0")
+best <- alt |> group_by(gen, level) |> summarise(bI = max(pow_I), bC = max(pow_C), .groups = "drop")
+reg <- alt |> left_join(best, by = c("gen", "level")) |> mutate(regI = bI - pow_I, regC = bC - pow_C)
+crit <- reg |> group_by(W) |> summarise(
+  `K2 daya rata-rata Moran` = mean(pow_I), `K3 penyesalan maks Moran` = max(regI),
+  `K4 daya terburuk (tingkat 0,50) Moran` = min(pow_I[level == 0.50]),
+  `K2 daya rata-rata Geary` = mean(pow_C), `K3 penyesalan maks Geary` = max(regC),
+  `K4 daya terburuk (tingkat 0,50) Geary` = min(pow_C[level == 0.50]),
+  `K5 kesepakatan` = mean(agree), .groups = "drop") |>
+  left_join(size |> select(W, `Size Moran`, `Size Geary`, `K1 Moran`, `K1 Geary`), by = "W") |>
+  mutate(Kelas = case_when(`K1 Moran` == "Tidak wajar" | `K3 penyesalan maks Moran` > .30 ~ "Sensitif",
+                           `K3 penyesalan maks Moran` <= .15 ~ "Robust", TRUE ~ "Menengah"),
+         `Kelas (Geary)` = case_when(`K1 Geary` == "Tidak wajar" | `K3 penyesalan maks Geary` > .30 ~ "Sensitif",
+                                     `K3 penyesalan maks Geary` <= .15 ~ "Robust", TRUE ~ "Menengah"),
+         `Penyesalan maks gabungan` = pmax(`K3 penyesalan maks Moran`, `K3 penyesalan maks Geary`),
+         Spesifikasi = lab[W], Keluarga = fam[W]) |>
+  arrange(`K3 penyesalan maks Moran`, desc(`K2 daya rata-rata Moran`))
+crit_show <- crit |> transmute(Peringkat = row_number(), Spesifikasi, Keluarga, `Size Moran`,
+  `K2 daya rata-rata Moran`, `K3 penyesalan maks Moran`, `K4 daya terburuk (tingkat 0,50) Moran`,
+  `K3 penyesalan maks Geary`, `Penyesalan maks gabungan`, `K5 kesepakatan`, `Kelas (Moran)` = Kelas, `Kelas (Geary)`)
+kt(crit_show, 3)
+sim_csv(crit, "S06_kriteria_per_matriks")
+
+pw <- alt |> filter(level == 0.50) |> mutate(Spesifikasi = factor(label, rev(crit$Spesifikasi)), Pembangkit = glab[gen])
+p_heat <- ggplot(pw, aes(Pembangkit, Spesifikasi, fill = pow_I)) + geom_tile(colour = "white") +
+  geom_text(aes(label = f2(pow_I, 2)), size = 3, colour = ifelse(pw$pow_I > .6, "white", "black")) +
+  scale_fill_gradient(low = "#f4f1ea", high = "#1f3a5f", limits = c(0, 1), name = "Daya") +
+  labs(title = "Daya Moran's I pada tingkat kekuatan sedang (daya matriks terbaik = 0,50)",
+       subtitle = "Baris diurutkan dari penyesalan maksimum terkecil (paling robust) di atas", x = NULL, y = NULL) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+p_heat; sim_png(p_heat, "S07_daya_tingkat050", 9, 10)
+```
+
+```{r sim-curve, fig.height = 6}
+pick <- unique(c(head(crit$W, 3), tail(crit$W, 3), "queen_W"))
+cur <- alt |> filter(W %in% pick) |> mutate(Spesifikasi = factor(label, lab[pick]), Pembangkit = glab[gen])
+p_cur <- ggplot(cur, aes(level, pow_I, colour = Spesifikasi)) + geom_line() + geom_point(size = 1.4) +
+  facet_wrap(~Pembangkit, nrow = 1) + geom_abline(slope = 1, intercept = 0, linetype = 3, colour = "grey50") + scale_x_continuous(breaks = LVL, labels = f2(LVL, 2)) +
+  labs(title = "Kurva daya Moran's I: 3 matriks paling robust, 3 paling sensitif, dan Queen · W",
+       x = "Tingkat kekuatan (daya matriks terbaik)", y = "Daya", colour = NULL, caption = "Garis titik-titik = daya matriks terbaik; jarak ke garis itu adalah penyesalan.") + theme(legend.position = "bottom")
+p_cur; sim_png(p_cur, "S08_kurva_daya", 12, 5.5)
+```
+
+```{r sim-robust-check}
+# Kepekaan klasifikasi terhadap batas: apakah matriks rekomendasi tetap sama bila batas diubah?
+rec_id <- crit |> filter(`K1 Moran` == "Wajar") |> slice_min(`K3 penyesalan maks Moran`, n = 1, with_ties = FALSE) |> pull(W)
+rec_C  <- crit |> filter(`K1 Geary` == "Wajar") |> slice_min(`K3 penyesalan maks Geary`, n = 1, with_ties = FALSE) |> pull(W)
+alt_rule <- reg |> group_by(W) |> summarise(mean_reg = mean(regI), q90 = quantile(regI, .9), .groups = "drop") |>
+  left_join(size |> select(W, `K1 Moran`), by = "W") |> filter(`K1 Moran` == "Wajar")
+top3 <- function(v) paste(lab[alt_rule$W[order(v)][1:3]], collapse = "; ")
+sens_rule <- data.frame(
+  `Aturan pemilihan` = c("Penyesalan maksimum (utama)", "Penyesalan rata-rata", "Persentil ke-90 penyesalan",
+                         "Hanya pola lemah–sedang (tingkat ≤ 0,50)"),
+  `Tiga teratas` = c(paste(head(crit |> filter(`K1 Moran` == "Wajar") |> pull(Spesifikasi), 3), collapse = "; "),
+                     top3(alt_rule$mean_reg), top3(alt_rule$q90),
+                     { w <- reg |> filter(level <= .50) |> group_by(W) |> summarise(m = max(regI)) |>
+                         filter(W %in% alt_rule$W) |> arrange(m); paste(lab[w$W[1:3]], collapse = "; ") }),
+  check.names = FALSE)
+nb_stat <- c(robust = sum(crit$Kelas == "Robust"), menengah = sum(crit$Kelas == "Menengah"), sensitif = sum(crit$Kelas == "Sensitif"))
+kt(sens_rule); sim_csv(sens_rule, "S09_kepekaan_aturan")
+rcr <- crit |> filter(W == rec_id)
+rec_J <- crit |> filter(`K1 Moran` == "Wajar", `K1 Geary` == "Wajar") |> arrange(`Penyesalan maks gabungan`) |> head(3)
+se_pow <- sqrt(.25 / R1); se_reg <- sqrt(2) * se_pow   # SE daya terburuk (p = 0,5) dan SE selisih dua daya
+both_rob <- crit$Spesifikasi[crit$Kelas == "Robust" & crit$`Kelas (Geary)` == "Robust"]
+both_sen <- crit$Spesifikasi[crit$Kelas == "Sensitif" & crit$`Kelas (Geary)` == "Sensitif"]
+```
+
+```{r sim-export, include = FALSE}
+# Ekspor hasil simulasi untuk dashboard HTML (sumber tunggal: bab ini). Tidak ada statistik yang dihitung ulang di dashboard.
+crit_js <- crit |> transmute(W, label = Spesifikasi, family = Keluarga,
+  size_I = `Size Moran`, size_C = `Size Geary`, pow_I = `K2 daya rata-rata Moran`, pow_C = `K2 daya rata-rata Geary`,
+  reg_I = `K3 penyesalan maks Moran`, reg_C = `K3 penyesalan maks Geary`, reg_J = `Penyesalan maks gabungan`,
+  worst_I = `K4 daya terburuk (tingkat 0,50) Moran`, worst_C = `K4 daya terburuk (tingkat 0,50) Geary`,
+  agree = `K5 kesepakatan`, k1_I = `K1 Moran`, k1_C = `K1 Geary`, cls_I = Kelas, cls_C = `Kelas (Geary)`)
+sim_res <- list(
+  meta = list(variable = "CRIME", rec_id = rec_id, rec_label = unname(lab[rec_id]), rec_C = rec_C, rec_C_label = unname(lab[rec_C]),
+              joint = rec_J$Spesifikasi, joint_reg = rec_J[["Penyesalan maks gabungan"]], R0 = R0, R1 = R1, levels = LVL,
+              thr = c(0.15, 0.30), se_pow = se_pow, se_reg = se_reg, seed = SIM_SEED, alpha = A,
+              obs_I = unname(obs["queen_B", "I"]), obs_C = unname(obs["queen_B", "C"]),
+              rw_I_mean = mean(rw[, 1]), rw_I_sd = sd(rw[, 1]), rw_C_mean = mean(rw[, 2]),
+              diag_I = unname(od["I"]), diag_C = unname(od["C"]), EI = -1 / (n - 1)),
+  gens = data.frame(id = GEN, label = unname(glab[GEN]),
+    form = c("SAR dengan Queen · W", "SAR dengan k = 4 · W", "SAR dengan pita jarak d ≤ 1,10 · W",
+             "Geostatistik, kovarians eksponensial e^(−d/1)", "Tren radial dari DISCBD"),
+    shape = c("Klaster antartetangga yang bersentuhan", "Klaster antartetangga terdekat", "Klaster dalam radius tetap",
+              "Kemiripan meluruh mulus dengan jarak", "Gradien pusat kota ke pinggiran")),
+  crit = crit_js,
+  power = sim |> filter(gen != "H0") |> select(W, gen, level, param, pow_I, pow_C, agree, mean_I, mean_C),
+  rewire_I = rw[, 1], tests = comp, verify = verify, perm_check = v1, calibration = cal_out, rules = sens_rule)
+saveRDS(sim_res, file.path("output", "rds", "simulasi_crime.rds"))
+sim_json <- jsonlite::toJSON(sim_res, dataframe = "columns", digits = I(10), auto_unbox = TRUE, na = "null")
+writeLines(sim_json, file.path(SIM_OUT, "simulasi_crime.json"))
+idx <- "dashboard_html/index.html"
+if (file.exists(idx)) {
+  h <- paste(readLines(idx, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  if (grepl("/*__SIM__*/null", h, fixed = TRUE)) {
+    h <- sub("/*__SIM__*/null", gsub("</", "<\\/", sim_json, fixed = TRUE), h, fixed = TRUE)
+    writeLines(h, idx, useBytes = TRUE)
+  }
+}
+```

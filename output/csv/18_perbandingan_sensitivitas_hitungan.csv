@@ -1,0 +1,13 @@
+"dimensi","skala","Moran's I","Geary's C","Setara","Variabel dgn arah sama di kedua skala"
+"Struktur W","ES",0,3,3,3
+"Struktur W","z",3,2,1,3
+"Jumlah tetangga k","ES",0,3,3,3
+"Jumlah tetangga k","z",2,0,4,3
+"Ambang jarak","ES",3,2,1,4
+"Ambang jarak","z",3,3,0,4
+"Standardisasi","ES",1,5,0,3
+"Standardisasi","z",1,4,1,3
+"Satu outlier","ES",1,3,2,3
+"Satu outlier","z",3,1,2,3
+"Nilai ekstrem","ES",1,4,1,5
+"Nilai ekstrem","z",1,3,2,5

@@ -1,0 +1,5 @@
+"Pemeriksaan","Nilai"
+"Maks |rata-rata Iᵢ − I global| (16 W row-standardized × 6 variabel)","1.11e-16"
+"Permutasi bersyarat sendiri vs spdep: maks |Δp| / (√2 × SE Monte Carlo) (98 wilayah)","2.37"
+"Persentase wilayah dengan rasio < 2","94.9%"
+"Klasifikasi signifikan p mentah sama (sendiri vs spdep)","98 dari 98"

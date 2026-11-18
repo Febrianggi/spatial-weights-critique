@@ -1,0 +1,6 @@
+"Pemeriksaan","Hasil"
+"Sebaran nilai data simulasi = sebaran CRIME asli (25.000 kumpulan data)","TRUE"
+"Rata-rata Moran's I (32 W) naik monoton terhadap tingkat kekuatan pada kelima pembangkit","TRUE"
+"Hasil identik bila dijalankan ulang dengan seed yang sama","TRUE"
+"Galat Monte Carlo size pada 5.000 ulangan nol (SE)","0,0031"
+"Kesesuaian keputusan uji analitik vs permutasi 999 kali (median, 4 W × 300 ulangan)","98,0%"

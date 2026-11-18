@@ -1,0 +1,919 @@
+<!--
+Computation for the whole study (6 variables x 32 weights matrices).
+Included by Columbus_Spatial_Analysis.Rmd with include = FALSE: it writes every CSV, PNG, RDS and JSON
+in output/ and builds dashboard_html/index.html, but prints nothing into the report.
+-->
+
+```{r packages}
+suppressPackageStartupMessages({
+  library(sf); library(spdep); library(dplyr); library(tidyr)
+  library(ggplot2); library(patchwork); library(jsonlite); library(knitr); library(scales)
+})
+SEED  <- 20261112L   # seed tetap
+NSIM  <- 9999L       # jumlah permutasi
+ALPHA <- 0.05
+VARS  <- c("HOVAL", "INC", "CRIME", "OPEN", "PLUMB", "DISCBD")
+REF   <- "queen_W"   # spesifikasi acuan
+
+OUT <- "output"
+for (d in file.path(OUT, c("csv", "png", "rds", "json"))) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+save_csv <- function(df, name) write.csv(df, file.path(OUT, "csv", paste0(name, ".csv")), row.names = FALSE)
+save_png <- function(p, name, w = 9, h = 5.5) ggsave(file.path(OUT, "png", paste0(name, ".png")), p, width = w, height = h, dpi = 150, bg = "white")
+
+theme_set(theme_minimal(base_size = 11) +
+          theme(panel.grid.minor = element_blank(), plot.title.position = "plot",
+                plot.title = element_text(face = "bold")))
+COL_CONC <- c("Positif" = "#c0392b", "Negatif" = "#2471a3", "Tidak signifikan" = "#bfc5cc")
+COL_LISA <- c("HH" = "#d7191c", "LL" = "#2c7bb6", "HL" = "#fdae61", "LH" = "#abd9e9", "NS" = "#ececec")
+kt <- function(df, digits = 4, ...) kable(df, digits = digits, format.args = list(big.mark = ""), ...)
+cat("R", R.version.string, "| sf", as.character(packageVersion("sf")),
+    "| spdep", as.character(packageVersion("spdep")), "| spData", as.character(packageVersion("spData")), "\n")
+```
+
+```{r data}
+geoda_shp <- "data/geoda_sal/columbus.shp"
+stopifnot(file.exists(geoda_shp))
+col <- st_read(geoda_shp, quiet = TRUE) |> arrange(POLYID)
+col_spdata <- st_read(system.file("shapes/columbus.shp", package = "spData"), quiet = TRUE) |> arrange(POLYID)
+data_source <- "GeoDa/SAL columbus (data/geoda_sal; identik dengan spData::columbus.shp, lihat Bagian 3.2)"
+data_source
+```
+
+```{r validate}
+geoda_vars <- c("AREA","PERIMETER","COLUMBUS_","COLUMBUS_I","POLYID","NEIG","HOVAL","INC","CRIME",
+                "OPEN","PLUMB","DISCBD","X","Y","NSA","NSB","EW","CP","THOUS","NEIGNO")
+o1 <- st_drop_geometry(col)[col$POLYID == 1, ]
+checks <- tibble(
+  Pemeriksaan = c("Jumlah wilayah = 49", "20 atribut kodebuku GeoDa lengkap",
+                  "Tidak ada missing value pada 6 variabel", "Semua variabel analisis numerik",
+                  "Semua geometri valid", "Tidak ada geometri kosong", "Tipe geometri poligon",
+                  "POLYID unik 1–49", "Obs. 1 cocok Tabel 12.1 Anselin (HOVAL 80,467; INC 19,531; CRIME 15,726)",
+                  "CRS terdefinisi"),
+  Hasil = c(nrow(col) == 49, all(geoda_vars %in% names(col)),
+            sum(is.na(st_drop_geometry(col)[, VARS])) == 0,
+            all(sapply(st_drop_geometry(col)[, VARS], is.numeric)),
+            all(st_is_valid(col)), !any(st_is_empty(col)),
+            all(st_geometry_type(col) %in% c("POLYGON", "MULTIPOLYGON")),
+            isTRUE(all.equal(sort(col$POLYID), 1:49)) && !anyDuplicated(col$POLYID),
+            isTRUE(all.equal(c(o1$HOVAL, o1$INC, o1$CRIME), c(80.467, 19.531, 15.72598), tolerance = 1e-4)),
+            !is.na(st_crs(col))))
+kt(checks)
+stopifnot(all(checks$Hasil[1:9]))
+save_csv(checks, "01_validasi_data")
+```
+
+```{r equivalence}
+data("columbus", package = "spData")   # tabel ketik-ulang Anselin + col.gal.nb
+a <- st_drop_geometry(col); b <- st_drop_geometry(col_spdata)
+va <- st_coordinates(col); vb <- st_coordinates(col_spdata)
+eqv <- tibble(
+  Perbandingan = c(paste0("Atribut GeoDa vs spData shp: maks |selisih| (", length(geoda_vars), " kolom)"),
+                   "Jumlah verteks geometri (GeoDa | spData)",
+                   "Koordinat verteks: maks |selisih|",
+                   "6 variabel + X, Y: GeoDa vs tabel ketik-ulang Anselin (spData::columbus)",
+                   "Urutan baris: POLYID GeoDa = urutan tabel Anselin"),
+  Hasil = c(format(max(sapply(geoda_vars, function(v) max(abs(as.numeric(a[[v]]) - as.numeric(b[[v]])))))),
+            paste(nrow(va), "|", nrow(vb)),
+            format(if (nrow(va) == nrow(vb)) max(abs(va[, 1:2] - vb[, 1:2])) else NA),
+            format(max(sapply(c(VARS, "X", "Y"), function(v) max(abs(a[[v]] - columbus[[v]]))))),
+            as.character(identical(as.numeric(a$NEIG), as.numeric(columbus$NEIG)))))
+kt(eqv)
+stopifnot(eqv$Hasil[c(1, 3, 4)] == "0", eqv$Hasil[5] == "TRUE")
+save_csv(eqv, "01b_kesetaraan_geoda_spdata")
+```
+
+```{r coords}
+cc <- st_coordinates(st_centroid(st_geometry(col)))
+fx <- lm(col$X ~ cc[, 1]); fy <- lm(col$Y ~ cc[, 2])
+coord_check <- tibble(Sumbu = c("X", "Y"),
+  `Kemiringan (atribut vs centroid geometri)` = c(coef(fx)[2], coef(fy)[2]),
+  R2 = c(summary(fx)$r.squared, summary(fy)$r.squared))
+kt(coord_check)
+save_csv(coord_check, "02_cek_skala_koordinat")
+```
+
+```{r descriptives}
+skew <- function(v) { z <- v - mean(v); mean(z^3) / mean(z^2)^1.5 }
+kurt <- function(v) { z <- v - mean(v); mean(z^4) / mean(z^2)^2 - 3 }
+iqr_out <- function(v) { q <- quantile(v, c(.25, .75)); h <- 1.5 * diff(q); which(v < q[1] - h | v > q[2] + h) }
+desc <- lapply(VARS, function(v) {
+  x <- col[[v]]; o <- iqr_out(x)
+  tibble(Variabel = v, n = length(x), Mean = mean(x), SD = sd(x), Min = min(x),
+         Q1 = quantile(x, .25), Median = median(x), Q3 = quantile(x, .75), Max = max(x),
+         Skewness = skew(x), `Excess kurtosis` = kurt(x),
+         `Shapiro–Wilk p` = shapiro.test(x)$p.value, `n outlier (1,5·IQR)` = length(o),
+         `POLYID outlier` = if (length(o)) paste(col$POLYID[o], collapse = ", ") else "–")
+}) |> bind_rows()
+var_desc <- c(HOVAL = "Nilai rumah (US$1.000)", INC = "Pendapatan rumah tangga (US$1.000)",
+              CRIME = "Pencurian rumah & kendaraan per 1.000 RT", OPEN = "Luas ruang terbuka",
+              PLUMB = "% unit rumah tanpa plumbing", DISCBD = "Jarak ke CBD")
+kt(desc, 3)
+save_csv(desc, "03_statistik_deskriptif")
+```
+
+```{r choropleth, fig.height = 7.5}
+long <- col |> select(POLYID, all_of(VARS)) |> pivot_longer(all_of(VARS), names_to = "var")
+maps <- lapply(VARS, function(v) {
+  ggplot(filter(long, var == v)) + geom_sf(aes(fill = value), colour = "white", linewidth = .25) +
+    scale_fill_distiller(palette = "YlGnBu", direction = 1, name = NULL) +
+    labs(title = v, subtitle = var_desc[[v]]) + theme_void(base_size = 10) +
+    theme(plot.title = element_text(face = "bold"), legend.key.width = unit(.35, "cm"))
+})
+p_choro <- wrap_plots(maps, ncol = 3)
+p_choro; save_png(p_choro, "01_choropleth_6_variabel", 11, 7.5)
+```
+
+```{r distributions, fig.height = 4.2}
+p_dist <- ggplot(st_drop_geometry(long), aes(value)) +
+  geom_histogram(bins = 15, fill = "#5d7f99", colour = "white") +
+  geom_rug(alpha = .5) + facet_wrap(~var, scales = "free", nrow = 1) +
+  labs(title = "Distribusi enam variabel", x = NULL, y = "Frekuensi")
+p_dist; save_png(p_dist, "02_histogram_6_variabel", 13, 3.6)
+```
+
+```{r weights-build}
+d1max <- max(unlist(nbdists(knn2nb(knearneigh(cc, 1)), cc)))
+THRESH <- c(0.62, 0.75, 0.90, 1.10, 1.35, 1.65)
+K <- c(2, 3, 4, 5, 6, 8)
+stopifnot(min(THRESH) >= d1max)
+
+specs <- bind_rows(
+  tibble(family = "Contiguity", key = c("queen", "rook"), variant = c("Queen", "Rook"), param = NA_real_),
+  tibble(family = "KNN", key = paste0("knn", K), variant = paste0("k = ", K), param = K),
+  tibble(family = "Distance band", key = sprintf("band%03d", round(THRESH * 100)),
+         variant = sprintf("d ≤ %.2f", THRESH), param = THRESH),
+  tibble(family = "Inverse distance", key = c("idw1", "idw2"), variant = c("1/d", "1/d²"), param = c(1, 2))
+) |> tidyr::crossing(style = c("B", "W")) |>
+  mutate(family = factor(family, c("Contiguity", "KNN", "Distance band", "Inverse distance")),
+         id = paste0(key, "_", style),
+         style_label = case_when(style == "W" ~ "Row-standardized",
+                                 family == "Inverse distance" ~ "Mentah (tanpa standardisasi)",
+                                 TRUE ~ "Biner"),
+         label = paste0(variant, " · ", style)) |>
+  arrange(family, param, variant, style) |> mutate(order = row_number())
+
+build_lw <- function(family, param, variant, style, g) {
+  xy <- st_coordinates(st_centroid(st_geometry(g)))
+  glist <- NULL
+  nb <- switch(as.character(family),
+    "Contiguity"       = poly2nb(g, queen = variant == "Queen"),
+    "KNN"              = knn2nb(knearneigh(xy, k = param)),
+    "Distance band"    = dnearneigh(xy, 0, param),
+    "Inverse distance" = { nb <- dnearneigh(xy, 0, max(dist(xy)) * 1.001)
+                           glist <- lapply(nbdists(nb, xy), function(d) 1 / d^param); nb })
+  nb2listw(nb, glist = glist, style = style, zero.policy = TRUE)
+}
+LW <- setNames(lapply(seq_len(nrow(specs)), function(i)
+  with(specs[i, ], build_lw(family, param, variant, style, col))), specs$id)
+cat("Jarak tetangga-terdekat maksimum =", round(d1max, 4), "sp →  ambang minimum valid\n")
+```
+
+```{r weights-validate}
+gal <- read.gal("data/geoda_sal/columbus.gal", region.id = col$POLYID)
+nb_q <- LW$queen_B$neighbours; attr(nb_q, "region.id") <- attr(gal, "region.id")
+diff_gal <- sum(card(diffnb(gal, nb_q, verbose = FALSE)))
+anselin <- col.gal.nb; attr(anselin, "region.id") <- attr(gal, "region.id")
+pairs_of <- function(nb) { e <- do.call(rbind, lapply(seq_along(nb), function(i) if (length(nb[[i]])) cbind(i, nb[[i]]))); e[e[, 1] < e[, 2], , drop = FALSE] }
+pq <- paste(pairs_of(nb_q)[, 1], pairs_of(nb_q)[, 2]); pa <- paste(pairs_of(anselin)[, 1], pairs_of(anselin)[, 2])
+only_q <- setdiff(pq, pa); only_a <- setdiff(pa, pq)
+nbval <- tibble(
+  Pemeriksaan = c("Queen (poly2nb) vs columbus.gal GeoDa: jumlah link berbeda", "Link Queen / GAL GeoDa / col.gal.nb Anselin",
+                  "Pasangan hanya di Queen (POLYID)", "Pasangan hanya di col.gal.nb Anselin (POLYID)"),
+  Hasil = c(as.character(diff_gal), paste(sum(card(nb_q)), "/", sum(card(gal)), "/", sum(card(anselin))),
+            paste(sapply(strsplit(only_q, " "), function(p) paste(col$POLYID[as.integer(p)], collapse = "–")), collapse = ", "),
+            if (length(only_a)) paste(sapply(strsplit(only_a, " "), function(p) paste(col$POLYID[as.integer(p)], collapse = "–")), collapse = ", ") else "–"))
+kt(nbval); stopifnot(diff_gal == 0)
+save_csv(nbval, "04b_validasi_kontiguitas")
+```
+
+```{r anselin-gal}
+lw_anselin <- nb2listw(anselin, style = "W")
+ans_cmp <- bind_rows(lapply(seq_along(VARS), function(v) {
+  x <- col[[VARS[v]]]
+  set.seed(SEED + 900L + v); mA <- moran.mc(x, lw_anselin, NSIM); set.seed(SEED + 950L + v); gA <- geary.mc(x, lw_anselin, NSIM)
+  set.seed(SEED + 1000L * 2L + 10L * v); mQ <- moran.mc(x, LW$queen_W, NSIM)
+  tibble(Variabel = VARS[v], `I Queen` = unname(mQ$statistic), `I Anselin` = unname(mA$statistic),
+         `p I Anselin` = mA$p.value, `C Anselin` = unname(gA$statistic), `p C Anselin` = gA$p.value)
+}))
+kt(ans_cmp); save_csv(ans_cmp, "04c_moran_geary_kontiguitas_anselin")
+```
+
+```{r units-invariance}
+scale_k <- unname(coef(fx)[2])
+xy_geom <- cc; xy_attr <- cbind(col$X, col$Y)
+IC <- function(x, lw) c(I = moran(x, lw, length(x), Szero(lw))$I, C = geary(x, lw, length(x), length(x) - 1, Szero(lw))$C)
+mk_lw <- function(xy, fam, p, st) {
+  if (fam == "KNN") return(nb2listw(knn2nb(knearneigh(xy, p)), style = st))
+  if (fam == "band") return(nb2listw(dnearneigh(xy, 0, p), style = st, zero.policy = TRUE))
+  nb <- dnearneigh(xy, 0, max(dist(xy)) * 1.001); nb2listw(nb, glist = lapply(nbdists(nb, xy), function(d) 1 / d^p), style = st)
+}
+inv <- bind_rows(lapply(list(c("band", 1.10, "B"), c("idw", 1, "B"), c("idw", 2, "W")), function(sp) {
+  p <- as.numeric(sp[2])
+  bind_rows(lapply(VARS, function(v) {
+    a <- IC(col[[v]], mk_lw(xy_geom, sp[1], p, sp[3]))
+    b <- IC(col[[v]], mk_lw(xy_geom * scale_k, sp[1], if (sp[1] == "band") p * scale_k else p, sp[3]))
+    tibble(spec = paste(sp, collapse = " "), var = v, dI = abs(a[["I"]] - b[["I"]]), dC = abs(a[["C"]] - b[["C"]]))
+  }))
+}))
+knn_pt <- bind_rows(lapply(c(2, 4, 6), function(k) {
+  na <- knn2nb(knearneigh(xy_geom, k)); nbb <- knn2nb(knearneigh(xy_attr, k))
+  same <- mean(mapply(function(u, w) length(intersect(u, w)) / length(u), na, nbb))
+  bind_rows(lapply(VARS, function(v) tibble(k = k, var = v, `% tetangga sama` = 100 * same,
+    `I (centroid geometri)` = IC(col[[v]], nb2listw(na))[["I"]], `I (titik X/Y Anselin)` = IC(col[[v]], nb2listw(nbb))[["I"]])))
+}))
+units_tab <- tibble(`Uji` = c("Maks |ΔI| setelah skala jarak dikali faktor X/Y", "Maks |ΔC| setelah skala jarak dikali faktor X/Y",
+                              "KNN: % tetangga sama (centroid geometri vs titik X/Y), min–maks",
+                              "KNN: maks |ΔI| akibat pilihan titik"),
+                    Nilai = c(format(max(inv$dI), digits = 3), format(max(inv$dC), digits = 3),
+                              paste(round(min(knn_pt$`% tetangga sama`), 1), "–", round(max(knn_pt$`% tetangga sama`), 1)),
+                              format(max(abs(knn_pt[[4]] - knn_pt[[5]])), digits = 3)))
+kt(units_tab); stopifnot(max(inv$dI) < 1e-10, max(inv$dC) < 1e-10)
+save_csv(units_tab, "04d_uji_satuan_dan_centroid"); save_csv(knn_pt, "04e_knn_centroid_vs_titik_anselin")
+```
+
+```{r weights-summary}
+wsum <- lapply(specs$id, function(id) {
+  lw <- LW[[id]]; card <- card(lw$neighbours); M <- listw2mat(lw)
+  tibble(id = id, `Total link` = sum(card), `Rata-rata tetangga` = mean(card),
+         `Min tetangga` = min(card), `Maks tetangga` = max(card), `Terisolasi` = sum(card == 0),
+         `% non-nol` = 100 * sum(card) / nrow(col)^2,
+         `Struktur simetris` = is.symmetric.nb(lw$neighbours, force = TRUE, verbose = FALSE),
+         `Matriks simetris` = isSymmetric(unname(M)), S0 = spweights.constants(lw)$S0)
+}) |> bind_rows()
+specs <- left_join(specs, wsum, by = "id")
+kt(select(specs, Keluarga = family, Spesifikasi = variant, Skema = style_label, `Total link`:S0), 3)
+save_csv(select(specs, -key), "04_matriks_bobot_ringkasan")
+```
+
+```{r weights-graphs, fig.height = 7.5}
+edges_of <- function(id) {
+  nb <- LW[[id]]$neighbours
+  do.call(rbind, lapply(seq_along(nb), function(i) if (length(nb[[i]]))
+    data.frame(x = cc[i, 1], y = cc[i, 2], xend = cc[nb[[i]], 1], yend = cc[nb[[i]], 2])))
+}
+show_ids <- c("queen_B", "rook_B", "knn2_B", "knn6_B", "band062_B", "band110_B")
+p_graph <- wrap_plots(lapply(show_ids, function(id) {
+  ggplot() + geom_sf(data = col, fill = "#f3f4f6", colour = "white", linewidth = .3) +
+    geom_segment(data = edges_of(id), aes(x, y, xend = xend, yend = yend), colour = "#2c5f8a", linewidth = .25, alpha = .7) +
+    geom_point(data = as.data.frame(cc), aes(X, Y), size = .6) +
+    labs(title = specs$label[specs$id == id],
+         subtitle = sprintf("%d link · rata-rata %.2f tetangga", specs$`Total link`[specs$id == id],
+                            specs$`Rata-rata tetangga`[specs$id == id])) +
+    theme_void(base_size = 10) + theme(plot.title = element_text(face = "bold"))
+}), ncol = 3)
+p_graph; save_png(p_graph, "03_graf_ketetanggaan", 11, 7.5)
+```
+
+```{r weights-counts, fig.height = 4}
+cnt <- bind_rows(
+  filter(specs, family == "KNN", style == "B") |> transmute(panel = "KNN (k)", param, v = `Rata-rata tetangga`, mx = `Maks tetangga`),
+  filter(specs, family == "Distance band", style == "B") |> transmute(panel = "Pita jarak (d*, satuan peta)", param, v = `Rata-rata tetangga`, mx = `Maks tetangga`))
+p_cnt <- ggplot(cnt, aes(param)) + geom_line(aes(y = v), colour = "#2c5f8a") + geom_point(aes(y = v), colour = "#2c5f8a") +
+  geom_line(aes(y = mx), linetype = 2, colour = "grey50") + facet_wrap(~panel, scales = "free_x") +
+  geom_hline(yintercept = mean(card(LW$queen_B$neighbours)), colour = "#c0392b", linewidth = .4) +
+  labs(title = "Kepadatan ketetanggaan", subtitle = "Garis penuh: rata-rata tetangga · putus-putus: maksimum · merah: Queen",
+       x = NULL, y = "Jumlah tetangga")
+p_cnt; save_png(p_cnt, "04_kepadatan_ketetanggaan", 9, 4)
+```
+
+```{r weights-matrix, fig.height = 7.5}
+mat_ids <- c("queen_W", "knn4_W", "band110_W", "idw1_B", "idw1_W", "idw2_W")
+mdf <- bind_rows(lapply(mat_ids, function(id) {
+  M <- listw2mat(LW[[id]]); M <- M / max(M)
+  data.frame(id = specs$label[specs$id == id], i = rep(1:49, 49), j = rep(1:49, each = 49), w = as.vector(M))
+}))
+p_mat <- ggplot(mdf, aes(j, i, fill = w)) + geom_raster() + scale_y_reverse() +
+  scale_fill_gradient(low = "white", high = "#1f3b57", name = "w / maks(w)") +
+  facet_wrap(~factor(id, unique(id)), ncol = 3) + coord_equal() +
+  labs(title = "Visualisasi matriks bobot (baris i, kolom j; urut POLYID)", x = "j", y = "i")
+p_mat; save_png(p_mat, "05_matriks_bobot_heatmap", 11, 7.5)
+```
+
+```{r global-compute}
+perm_summ <- function(obs, sim, orient) {
+  hi <- (sum(sim >= obs) + 1) / (length(sim) + 1); lo <- (sum(sim <= obs) + 1) / (length(sim) + 1)
+  m <- mean(sim); s <- sd(sim)
+  list(perm_mean = m, perm_sd = s, z_perm = orient * (obs - m) / s,
+       p_two = min(1, 2 * min(hi, lo)),
+       p_pos = if (orient > 0) hi else lo)   # satu sisi: arah autokorelasi positif
+}
+global_one <- function(x, lw, seed) {
+  set.seed(seed);     mc <- moran.mc(x, lw, nsim = NSIM, zero.policy = TRUE)
+  set.seed(seed + 1); gc <- geary.mc(x, lw, nsim = NSIM, zero.policy = TRUE)
+  mt <- moran.test(x, lw, randomisation = TRUE, zero.policy = TRUE)
+  gt <- geary.test(x, lw, randomisation = TRUE, zero.policy = TRUE)
+  ms <- perm_summ(mc$statistic, head(mc$res, -1), +1)
+  gs <- perm_summ(gc$statistic, head(gc$res, -1), -1)
+  bind_rows(
+    c(index = "Moran's I", stat = unname(mc$statistic), expected = unname(mt$estimate[2]),
+      var_rand = unname(mt$estimate[3]), ms),
+    c(index = "Geary's C", stat = unname(gc$statistic), expected = unname(gt$estimate[2]),
+      var_rand = unname(gt$estimate[3]), gs)) |>
+    mutate(across(-index, as.numeric))
+}
+t0 <- Sys.time()
+glob <- bind_rows(lapply(seq_len(nrow(specs)), function(s) bind_rows(lapply(seq_along(VARS), function(v)
+  global_one(col[[VARS[v]]], LW[[specs$id[s]]], SEED + 1000L * s + 10L * v) |>
+    mutate(spec_id = specs$id[s], var = VARS[v]))))) |>
+  mutate(z_rand = ifelse(index == "Moran's I", (stat - expected), (expected - stat)) / sqrt(var_rand),
+         signif = p_two < ALPHA,
+         conclusion = case_when(!signif ~ "Tidak signifikan",
+                                index == "Moran's I" & stat > expected ~ "Positif",
+                                index == "Geary's C" & stat < expected ~ "Positif",
+                                TRUE ~ "Negatif"),
+         # ukuran efek berorientasi (deterministik, tanpa noise Monte Carlo): >0 = autokorelasi positif
+         es = ifelse(index == "Moran's I", stat - expected, expected - stat),
+         # galat Monte Carlo p dua sisi: p = 2q, SE(p) = 2*sqrt(q(1-q)/R)
+         p_mc_se = 2 * sqrt((p_two / 2) * (1 - p_two / 2) / NSIM),
+         p_mc_lo = pmax(0, p_two - 1.96 * p_mc_se), p_mc_hi = pmin(1, p_two + 1.96 * p_mc_se),
+         borderline = p_mc_lo <= ALPHA & p_mc_hi >= ALPHA) |>
+  left_join(select(specs, spec_id = id, family, variant, style, style_label, param, label, order), by = "spec_id") |>
+  relocate(spec_id, family, variant, style, var, index)
+cat("Waktu komputasi:", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 2), "menit;",
+    nrow(glob), "uji ×", NSIM, "permutasi\n")
+save_csv(glob, "05_global_moran_geary_semua_spesifikasi")
+```
+
+```{r global-ref}
+ref_tab <- glob |> filter(spec_id == REF) |>
+  transmute(Variabel = var, Indeks = index, Nilai = stat, `E[·]` = expected,
+            `z permutasi` = z_perm, `p (2 sisi)` = p_two, Kesimpulan = conclusion)
+kt(ref_tab)
+```
+
+```{r global-wide}
+gw <- glob |> select(var, label, order, index, stat, p_two) |>
+  mutate(cell = sprintf("%.3f (%s)", stat, ifelse(p_two < 0.001, "<0,001", formatC(p_two, 3, format = "f")))) |>
+  select(-stat, -p_two) |> pivot_wider(names_from = c(index, var), values_from = cell, names_sep = " · ") |>
+  arrange(order) |> select(-order)
+kt(gw)
+```
+
+```{r global-plot, fig.height = 8}
+p_glob <- ggplot(glob, aes(z_perm, reorder(label, -order), colour = conclusion, shape = index)) +
+  geom_vline(xintercept = c(-1.96, 1.96), linetype = 3, colour = "grey60") + geom_vline(xintercept = 0, colour = "grey40") +
+  geom_point(size = 2, position = position_dodge(width = .6)) +
+  facet_wrap(~var, nrow = 1) + scale_colour_manual(values = COL_CONC) +
+  labs(title = "Skor-z permutasi berorientasi untuk 32 matriks bobot",
+       subtitle = "z > 0 = autokorelasi positif untuk kedua indeks; garis titik = ±1,96",
+       x = "z permutasi", y = NULL, colour = "Kesimpulan (α = 0,05)", shape = NULL) +
+  theme(legend.position = "bottom")
+p_glob; save_png(p_glob, "06_global_z_semua_spesifikasi", 14, 8)
+```
+
+```{r audit}
+# A1. Moran's I dan Geary's C dengan aljabar matriks langsung (rumus Bagian 2.1), 32 W × 6 variabel
+ind <- bind_rows(lapply(specs$id, function(id) { W <- listw2mat(LW[[id]]); S0 <- sum(W)
+  bind_rows(lapply(VARS, function(v) { x <- col[[v]]; z <- x - mean(x); n <- length(x)
+    tibble(spec_id = id, var = v, I_man = n / S0 * sum(W * outer(z, z)) / sum(z^2),
+           C_man = (n - 1) / (2 * S0) * sum(W * outer(x, x, "-")^2) / sum(z^2)) })) }))
+a1 <- glob |> select(spec_id, var, index, stat) |> pivot_wider(names_from = index, values_from = stat) |> left_join(ind, by = c("spec_id", "var"))
+dI_man <- max(abs(a1$`Moran's I` - a1$I_man)); dC_man <- max(abs(a1$`Geary's C` - a1$C_man))
+
+# A2. Uji permutasi ditulis ulang tanpa spdep (Queen·W, seed berbeda), dibandingkan dengan galat Monte Carlo
+own_perm <- function(x, W, R, seed) {
+  set.seed(seed); n <- length(x); S0 <- sum(W)
+  st <- function(v) { z <- v - mean(v); c(I = n / S0 * sum(z * (W %*% z)) / sum(z^2),
+                                         C = (n - 1) / (2 * S0) * sum(W * outer(v, v, "-")^2) / sum(z^2)) }
+  obs <- st(x); sim <- t(replicate(R, st(sample(x))))
+  pt <- function(o, s) min(1, 2 * min((sum(s >= o) + 1) / (R + 1), (sum(s <= o) + 1) / (R + 1)))
+  c(p_I = pt(obs[["I"]], sim[, "I"]), p_C = pt(obs[["C"]], sim[, "C"]),
+    z_I = (obs[["I"]] - mean(sim[, "I"])) / sd(sim[, "I"]), z_C = (mean(sim[, "C"]) - obs[["C"]]) / sd(sim[, "C"]))
+}
+Wq <- listw2mat(LW[[REF]])
+a2 <- bind_rows(lapply(seq_along(VARS), function(v) { o <- own_perm(col[[VARS[v]]], Wq, NSIM, SEED + 5000L + v)
+  r <- glob |> filter(spec_id == REF, var == VARS[v])
+  tibble(var = VARS[v], index = c("Moran's I", "Geary's C"), p_spdep = r$p_two[match(c("Moran's I", "Geary's C"), r$index)],
+         p_sendiri = o[c("p_I", "p_C")], z_spdep = r$z_perm[match(c("Moran's I", "Geary's C"), r$index)], z_sendiri = o[c("z_I", "z_C")],
+         se_mc = r$p_mc_se[match(c("Moran's I", "Geary's C"), r$index)]) })) |>
+  mutate(`|Δp| / (√2·SE_MC)` = abs(p_spdep - p_sendiri) / (sqrt(2) * pmax(se_mc, 2 / (NSIM + 1))), dz = abs(z_spdep - z_sendiri))
+kt(a2, 4); save_csv(a2, "05c_audit_permutasi_independen")
+
+# A3. Noise Monte Carlo pada z: untuk KNN, W = B/k sehingga I dan C identik; selisih z murni noise permutasi
+knn_pair <- glob |> filter(family == "KNN") |> mutate(base = sub("_[BW]$", "", spec_id)) |>
+  select(base, var, index, style, stat, z_perm) |> pivot_wider(names_from = style, values_from = c(stat, z_perm))
+d_stat_knn <- max(abs(knn_pair$stat_B - knn_pair$stat_W))
+NOISE_DZ <- qnorm(0.975) * sd(knn_pair$z_perm_W - knn_pair$z_perm_B)   # selisih z dua run yang < ini dianggap noise
+
+# A4. z permutasi vs z randomisasi analitik
+a4 <- glob |> group_by(index) |> summarise(r = cor(z_perm, z_rand), maks = max(abs(z_perm - z_rand)), .groups = "drop")
+
+audit <- tibble(
+  Pemeriksaan = c("Maks |I spdep − I rumus matriks| (192 kasus)", "Maks |C spdep − C rumus matriks| (192 kasus)",
+                  "Permutasi independen vs spdep: maks |Δp| / (√2 × SE Monte Carlo)", "Permutasi independen vs spdep: maks |Δz|",
+                  "KNN: maks |I_B − I_W| dan |C_B − C_W| (harus 0)", "Batas noise Monte Carlo untuk selisih z (1,96 × SD)",
+                  "Korelasi z permutasi vs z analitik: Moran | Geary", "Maks |z permutasi − z analitik|: Moran | Geary",
+                  "Kasus di batas α (IK 95% Monte Carlo p memuat 0,05)"),
+  Nilai = c(format(dI_man, digits = 3), format(dC_man, digits = 3), format(max(a2$`|Δp| / (√2·SE_MC)`), digits = 3),
+            format(max(a2$dz), digits = 3), format(d_stat_knn, digits = 3), format(NOISE_DZ, digits = 3),
+            paste(format(a4$r[a4$index == "Moran's I"], digits = 4), "|", format(a4$r[a4$index == "Geary's C"], digits = 4)),
+            paste(format(a4$maks[a4$index == "Moran's I"], digits = 3), "|", format(a4$maks[a4$index == "Geary's C"], digits = 3)),
+            paste(sum(glob$borderline), "dari", nrow(glob))))
+kt(audit); save_csv(audit, "05b_audit_metodologi")
+stopifnot(dI_man < 1e-10, dC_man < 1e-10, d_stat_knn < 1e-10, max(a2$`|Δp| / (√2·SE_MC)`) < 4)
+```
+
+```{r borderline}
+bl <- glob |> filter(borderline) |> transmute(Variabel = var, Spesifikasi = label, Indeks = index, p = p_two,
+  `IK 95% MC` = sprintf("[%.4f; %.4f]", p_mc_lo, p_mc_hi), Kesimpulan = conclusion)
+if (nrow(bl)) kt(bl) else cat("Tidak ada.\n")
+```
+
+```{r spec-search}
+ss <- glob |> group_by(var, index) |> summarise(`p min` = min(p_two), `W dgn p min` = label[which.min(p_two)],
+  `p maks` = max(p_two), `W dgn p maks` = label[which.max(p_two)], `% W signifikan` = 100 * mean(signif), .groups = "drop") |>
+  mutate(`Kesimpulan bisa dipilih` = `p min` < ALPHA & `p maks` >= ALPHA)
+kt(ss, 4); save_csv(ss, "05d_risiko_specification_searching")
+```
+
+```{r sens-ref}
+ref_vals <- glob |> filter(spec_id == REF) |> select(var, index, es_ref = es, z_ref = z_perm, conc_ref = conclusion)
+glob <- glob |> left_join(ref_vals, by = c("var", "index")) |> mutate(des_ref = es - es_ref, dz_ref = z_perm - z_ref)
+```
+
+```{r sens-num}
+sens_num <- glob |> group_by(var, index) |>
+  summarise(`ES acuan` = first(es_ref), `ES min` = min(es), `ES maks` = max(es), `Rentang ES` = max(es) - min(es),
+            `SD ES` = sd(es), `Maks |ΔES| vs acuan` = max(abs(des_ref)), `Nilai indeks min` = min(stat), `Nilai indeks maks` = max(stat),
+            `W dgn ES min` = label[which.min(es)], `W dgn ES maks` = label[which.max(es)], .groups = "drop")
+kt(sens_num, 3)
+save_csv(sens_num, "06_sensitivitas_numerik")
+```
+
+```{r sens-num-curves, fig.height = 7}
+curve_df <- glob |> filter(family %in% c("KNN", "Distance band"))
+p_curve_es <- ggplot(curve_df, aes(param, es, colour = index, linetype = style)) +
+  geom_hline(yintercept = 0, colour = "grey50") + geom_line() + geom_point(size = 1.6) +
+  facet_grid(var ~ family, scales = "free") +
+  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
+  labs(title = "Kurva sensitivitas numerik: ukuran efek terhadap k dan ambang jarak d*",
+       subtitle = "ES = I − E(I) untuk Moran, 1 − C untuk Geary · linetype: B = biner, W = row-standardized",
+       x = "k (KNN) / d* (satuan peta)", y = "Ukuran efek (berorientasi)", colour = NULL, linetype = "Skema")
+p_curve_es; save_png(p_curve_es, "08_kurva_sensitivitas_ukuran_efek", 11, 12)
+```
+
+```{r sens-inf}
+sens_inf <- glob |> group_by(var, index) |>
+  summarise(`z acuan` = first(z_ref), `Sinyal acuan` = ifelse(abs(first(z_ref)) >= qnorm(1 - ALPHA / 2), "Kuat", "Lemah"),
+            `z min` = min(z_perm), `z maks` = max(z_perm), `SD z` = sd(z_perm), `Maks |Δz| vs acuan` = max(abs(dz_ref)),
+            `% signifikan` = 100 * mean(signif), `% positif` = 100 * mean(conclusion == "Positif"),
+            `% negatif` = 100 * mean(conclusion == "Negatif"), `% tidak sig.` = 100 * mean(conclusion == "Tidak signifikan"),
+            `W berubah kesimpulan vs acuan` = sum(conclusion != conc_ref), `Kasus batas α` = sum(borderline), .groups = "drop") |>
+  mutate(`Konsistensi kesimpulan (%)` = pmax(`% positif`, `% negatif`, `% tidak sig.`))
+kt(sens_inf, 3)
+save_csv(sens_inf, "07_sensitivitas_inferensial")
+sens_fam <- glob |> group_by(var, index, family) |>
+  summarise(`SD ES` = sd(es), `SD z` = sd(z_perm), `Rentang z` = max(z_perm) - min(z_perm), `% signifikan` = 100 * mean(signif),
+            `Konsistensi (%)` = 100 * max(table(conclusion)) / n(), .groups = "drop")
+save_csv(sens_fam, "07b_sensitivitas_per_keluarga")
+```
+
+```{r sens-curves, fig.height = 7}
+p_curve <- ggplot(curve_df, aes(param, z_perm, colour = index, linetype = style)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -1.96, ymax = 1.96, alpha = .12, fill = "grey50") +
+  geom_line() + geom_point(aes(shape = conclusion), size = 2) +
+  facet_grid(var ~ family, scales = "free") +
+  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
+  scale_shape_manual(values = c("Positif" = 16, "Negatif" = 17, "Tidak signifikan" = 1)) +
+  labs(title = "Kurva sensitivitas inferensial: z permutasi terhadap k dan ambang jarak d*",
+       subtitle = "Pita abu-abu = |z| < 1,96 · linetype: B = biner, W = row-standardized",
+       x = "k (KNN) / d* (satuan peta)", y = "z permutasi (berorientasi)", colour = NULL, shape = "Kesimpulan", linetype = "Skema")
+p_curve; save_png(p_curve, "07_kurva_sensitivitas_z", 11, 12)
+```
+
+```{r sens-slopes}
+slopes <- curve_df |> group_by(var, index, family, style) |>
+  summarise(`Kemiringan ES` = coef(lm(es ~ param))[2], `Kemiringan z` = coef(lm(z_perm ~ param))[2], .groups = "drop") |>
+  mutate(satuan = ifelse(family == "KNN", "per +1 tetangga", "per +1 satuan peta"))
+kt(slopes |> select(-satuan) |> pivot_wider(names_from = c(family, style), values_from = c(`Kemiringan ES`, `Kemiringan z`)), 3)
+save_csv(slopes, "08b_kemiringan_respons_k_dan_jarak")
+```
+
+```{r sens-standardization}
+std_eff <- glob |> transmute(base = sub("_[BW]$", "", spec_id), family, variant, style, var, index, es, z_perm, conclusion) |>
+  pivot_wider(names_from = style, values_from = c(es, z_perm, conclusion)) |>
+  mutate(des = es_W - es_B, dz = z_perm_W - z_perm_B, flip = conclusion_W != conclusion_B, dz_nyata = abs(dz) > NOISE_DZ)
+card_cv <- specs |> filter(style == "B") |> transmute(base = sub("_B$", "", id),
+  `CV jumlah bobot baris (B)` = sapply(id, function(i) { r <- rowSums(listw2mat(LW[[i]])); sd(r) / mean(r) }))
+std_summ <- std_eff |> group_by(var, index) |>
+  summarise(`Rata-rata |ΔES|` = mean(abs(des)), `Maks |ΔES|` = max(abs(des)), `Rata-rata |Δz|` = mean(abs(dz)),
+            `Pasangan |Δz| > noise` = sum(dz_nyata), `Pasangan berubah kesimpulan` = sum(flip), dari = n(), .groups = "drop")
+kt(std_summ, 3)
+std_mech <- std_eff |> group_by(base) |> summarise(`Rata-rata |ΔES| (6 var × 2 indeks)` = mean(abs(des)), .groups = "drop") |>
+  left_join(card_cv, by = "base")
+rho_std <- cor(std_mech[[2]], std_mech[[3]], method = "spearman")
+kt(std_mech |> arrange(`CV jumlah bobot baris (B)`), 3)
+save_csv(std_eff, "09_efek_standardisasi_pasangan"); save_csv(std_summ, "10_efek_standardisasi_ringkasan")
+save_csv(std_mech, "10b_efek_standardisasi_vs_keragaman_tetangga")
+```
+
+```{r agreement}
+agree <- glob |> select(spec_id, label, order, family, var, index, conclusion, z_perm, p_two) |>
+  pivot_wider(names_from = index, values_from = c(conclusion, z_perm, p_two)) |>
+  rename(M = `conclusion_Moran's I`, G = `conclusion_Geary's C`) |>
+  mutate(kategori = case_when(
+    M == G & M == "Positif" ~ "Sepakat: positif", M == G & M == "Negatif" ~ "Sepakat: negatif",
+    M == G ~ "Sepakat: tidak signifikan",
+    M != "Tidak signifikan" & G == "Tidak signifikan" ~ "Hanya Moran signifikan",
+    M == "Tidak signifikan" & G != "Tidak signifikan" ~ "Hanya Geary signifikan",
+    TRUE ~ "Arah berlawanan"))
+COL_AGREE <- c("Sepakat: positif" = "#c0392b", "Sepakat: negatif" = "#2471a3", "Sepakat: tidak signifikan" = "#d5d8dc",
+               "Hanya Moran signifikan" = "#1f3b57", "Hanya Geary signifikan" = "#e67e22", "Arah berlawanan" = "#7d3c98")
+agree_rate <- agree |> group_by(var) |> summarise(`Kesepakatan (%)` = 100 * mean(M == G),
+  `Hanya Moran sig.` = sum(kategori == "Hanya Moran signifikan"), `Hanya Geary sig.` = sum(kategori == "Hanya Geary signifikan"),
+  `Arah berlawanan` = sum(kategori == "Arah berlawanan"), .groups = "drop")
+kt(agree_rate, 1)
+save_csv(agree, "11_kesepakatan_moran_geary"); save_csv(agree_rate, "12_kesepakatan_ringkasan")
+```
+
+```{r agreement-heatmap, fig.height = 8}
+p_agree <- ggplot(agree, aes(var, reorder(label, -order), fill = kategori)) + geom_tile(colour = "white") +
+  scale_fill_manual(values = COL_AGREE, drop = FALSE) +
+  labs(title = "Agreement heatmap: kesimpulan Moran's I vs Geary's C (α = 0,05)", x = NULL, y = NULL, fill = NULL) +
+  theme(panel.grid = element_blank())
+p_agree; save_png(p_agree, "09_agreement_heatmap", 9, 9)
+```
+
+```{r disagreement-cases}
+disagree <- agree |> filter(M != G) |> arrange(var, order) |>
+  transmute(Variabel = var, Spesifikasi = label, Kategori = kategori,
+            `z Moran` = `z_perm_Moran's I`, `p Moran` = `p_two_Moran's I`,
+            `z Geary` = `z_perm_Geary's C`, `p Geary` = `p_two_Geary's C`)
+if (nrow(disagree)) kt(disagree, 4) else cat("Tidak ada kasus ketidaksepakatan.\n")
+```
+
+```{r z-scatter, fig.height = 5}
+p_zz <- ggplot(agree, aes(`z_perm_Moran's I`, `z_perm_Geary's C`, colour = kategori)) +
+  geom_hline(yintercept = c(-1.96, 1.96), linetype = 3) + geom_vline(xintercept = c(-1.96, 1.96), linetype = 3) +
+  geom_abline(colour = "grey60") + geom_point(size = 2, alpha = .85) + facet_wrap(~var, nrow = 2) +
+  scale_colour_manual(values = COL_AGREE) +
+  labs(title = "z Moran vs z Geary pada 32 spesifikasi", x = "z Moran's I", y = "z Geary's C (berorientasi)", colour = NULL)
+p_zz; save_png(p_zz, "10_scatter_z_moran_vs_geary", 11, 6)
+```
+
+```{r outlier-jackknife}
+JK_REFS <- c("queen_W", "knn4_W", "idw1_W")
+zr <- function(x, lw) {
+  mt <- moran.test(x, lw, randomisation = TRUE, zero.policy = TRUE)$estimate
+  gt <- geary.test(x, lw, randomisation = TRUE, zero.policy = TRUE)$estimate
+  c(I = mt[[1]], esI = mt[[1]] - mt[[2]], zI = (mt[[1]] - mt[[2]]) / sqrt(mt[[3]]),
+    C = gt[[1]], esC = gt[[2]] - gt[[1]], zC = (gt[[2]] - gt[[1]]) / sqrt(gt[[3]]))
+}
+zcrit <- qnorm(1 - ALPHA / 2)
+jk <- bind_rows(lapply(JK_REFS, function(id) {
+  s <- specs[specs$id == id, ]
+  full <- sapply(VARS, function(v) zr(col[[v]], LW[[id]]))
+  bind_rows(lapply(1:49, function(i) {
+    g <- col[-i, ]; lw <- build_lw(s$family, s$param, s$variant, s$style, g)
+    bind_rows(lapply(VARS, function(v) { r <- zr(g[[v]], lw)
+      tibble(ref = id, var = v, drop_polyid = col$POLYID[i], index = c("Moran's I", "Geary's C"),
+             stat = r[c("I", "C")], es = r[c("esI", "esC")], z = r[c("zI", "zC")],
+             es_full = full[c("esI", "esC"), v], z_full = full[c("zI", "zC"), v]) }))
+  }))
+})) |> mutate(des = es - es_full, dz = z - z_full, sig_full = abs(z_full) > zcrit, sig_drop = abs(z) > zcrit)
+jk_summ <- jk |> group_by(ref, var, index) |>
+  summarise(`z penuh` = first(z_full), `Maks |ΔES|` = max(abs(des)), `Maks |Δz|` = max(abs(dz)),
+            `POLYID paling berpengaruh` = drop_polyid[which.max(abs(dz))],
+            `Penghapusan yang mengubah signifikansi` = sum(sig_drop != sig_full), .groups = "drop")
+kt(jk_summ, 3)
+save_csv(jk, "13_jackknife_detail"); save_csv(jk_summ, "14_jackknife_ringkasan")
+```
+
+```{r outlier-jackknife-plot, fig.height = 6}
+p_jk <- ggplot(filter(jk, ref == REF), aes(drop_polyid, dz, colour = index)) +
+  geom_hline(yintercept = 0, colour = "grey50") + geom_segment(aes(xend = drop_polyid, yend = 0), alpha = .5) +
+  geom_point(size = 1.2) + facet_wrap(~var, ncol = 2) +
+  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
+  labs(title = "Pengaruh penghapusan satu wilayah terhadap z (Queen, row-standardized)",
+       x = "POLYID yang dihapus", y = "Δz = z(−i) − z(penuh)", colour = NULL)
+p_jk; save_png(p_jk, "11_jackknife_influence", 10, 7)
+```
+
+```{r outlier-rank}
+rank_cmp <- bind_rows(lapply(specs$id, function(id) bind_rows(lapply(VARS, function(v) {
+  a <- zr(col[[v]], LW[[id]]); b <- zr(rank(col[[v]]), LW[[id]])
+  tibble(spec_id = id, var = v, index = c("Moran's I", "Geary's C"), es_raw = a[c("esI", "esC")], es_rank = b[c("esI", "esC")],
+         z_raw = a[c("zI", "zC")], z_rank = b[c("zI", "zC")])
+})))) |> mutate(des = es_rank - es_raw, dz = z_rank - z_raw)
+rank_summ <- rank_cmp |> group_by(var, index) |>
+  summarise(`Rata-rata |ΔES|` = mean(abs(des)), `Rata-rata |Δz|` = mean(abs(dz)),
+            `W berubah signifikansi` = sum((abs(z_rank) > zcrit) != (abs(z_raw) > zcrit)),
+            `W signifikan (nilai asli)` = sum(abs(z_raw) > zcrit), `W signifikan (peringkat)` = sum(abs(z_rank) > zcrit), .groups = "drop")
+kt(rank_summ, 3)
+save_csv(rank_cmp, "15_transformasi_peringkat_detail"); save_csv(rank_summ, "16_transformasi_peringkat_ringkasan")
+```
+
+```{r decomposition}
+decomp <- bind_rows(lapply(c("PLUMB", "HOVAL", "OPEN"), function(v) bind_rows(lapply(c("queen_B", "knn4_B", "band090_B", "band165_B", "idw1_B"), function(id) {
+  x <- col[[v]]; z <- x - mean(x); M <- listw2mat(LW[[id]]); out <- seq_along(x) %in% iqr_out(x)
+  inv <- outer(out, out, "|")
+  gnum <- M * outer(x, x, "-")^2; mnum <- M * outer(z, z)
+  tibble(var = v, spec_id = id, `n outlier` = sum(out),
+         `% pasangan berbobot yg melibatkan outlier` = 100 * sum(M[inv]) / sum(M),
+         `% pembilang Geary dari pasangan outlier` = 100 * sum(gnum[inv]) / sum(gnum),
+         `% |pembilang Moran| dari pasangan outlier` = 100 * sum(abs(mnum[inv])) / sum(abs(mnum)),
+         `Pembilang Moran dari pasangan outlier (tanda)` = sign(sum(mnum[inv])))
+}))))
+kt(decomp, 1); save_csv(decomp, "26_dekomposisi_kontribusi_outlier")
+```
+
+```{r compare-sensitivity}
+dims <- c("Struktur W", "Jumlah tetangga k", "Ambang jarak", "Standardisasi", "Satu outlier", "Nilai ekstrem")
+cmp_long <- bind_rows(
+  glob |> group_by(var, index) |> summarise(ES = sd(es), z = sd(z_perm), .groups = "drop") |> mutate(dimensi = dims[1]),
+  slopes |> group_by(var, index, family) |> summarise(ES = mean(abs(`Kemiringan ES`)), z = mean(abs(`Kemiringan z`)), .groups = "drop") |>
+    mutate(dimensi = ifelse(family == "KNN", dims[2], dims[3])) |> select(-family),
+  std_eff |> group_by(var, index) |> summarise(ES = mean(abs(des)), z = mean(abs(dz)), .groups = "drop") |> mutate(dimensi = dims[4]),
+  jk_summ |> group_by(var, index) |> summarise(ES = mean(`Maks |ΔES|`), z = mean(`Maks |Δz|`), .groups = "drop") |> mutate(dimensi = dims[5]),
+  rank_summ |> transmute(var, index, ES = `Rata-rata |ΔES|`, z = `Rata-rata |Δz|`, dimensi = dims[6])) |>
+  pivot_longer(c(ES, z), names_to = "skala", values_to = "nilai")
+TOL <- c(ES = 0.01, z = NOISE_DZ)
+cmp_tab <- cmp_long |> pivot_wider(names_from = index, values_from = nilai) |>
+  mutate(selisih = `Geary's C` - `Moran's I`,
+         `Lebih sensitif` = case_when(abs(selisih) < TOL[skala] ~ "Setara", selisih > 0 ~ "Geary's C", TRUE ~ "Moran's I"),
+         dimensi = factor(dimensi, dims)) |>
+  left_join(sens_inf |> filter(index == "Moran's I") |> select(var, `Sinyal acuan` ), by = "var") |>
+  arrange(dimensi, skala, var)
+save_csv(cmp_tab, "17_perbandingan_sensitivitas_moran_geary")
+cmp_count <- cmp_tab |> count(dimensi, skala, `Lebih sensitif`) |>
+  pivot_wider(names_from = `Lebih sensitif`, values_from = n, values_fill = 0)
+for (k in c("Moran's I", "Geary's C", "Setara")) if (!k %in% names(cmp_count)) cmp_count[[k]] <- 0L
+cmp_count <- cmp_count |> select(dimensi, skala, `Moran's I`, `Geary's C`, Setara)
+cmp_both <- cmp_tab |> select(var, dimensi, skala, `Lebih sensitif`) |> pivot_wider(names_from = skala, values_from = `Lebih sensitif`) |>
+  group_by(dimensi) |> summarise(`Variabel dgn arah sama di kedua skala` = sum(ES == z), .groups = "drop")
+cmp_count <- left_join(cmp_count, cmp_both, by = "dimensi")
+kt(cmp_count)
+save_csv(cmp_count, "18_perbandingan_sensitivitas_hitungan")
+```
+
+```{r compare-sensitivity-plot, fig.height = 5}
+p_cmp <- ggplot(cmp_tab, aes(var, dimensi, fill = `Lebih sensitif`)) + geom_tile(colour = "white") +
+  geom_text(aes(label = sprintf("%.2f / %.2f", `Moran's I`, `Geary's C`)), size = 2.6) +
+  facet_wrap(~skala, labeller = as_labeller(c(ES = "Skala ES (numerik)", z = "Skala z (inferensial)"))) +
+  scale_fill_manual(values = c("Moran's I" = "#8fa9c4", "Geary's C" = "#eba57a", "Setara" = "#ececec")) +
+  scale_y_discrete(limits = rev(dims)) +
+  labs(title = "Indeks yang lebih sensitif per variabel dan dimensi (deskriptif)",
+       subtitle = "Angka: ukuran sensitivitas absolut Moran / Geary", x = NULL, y = NULL, fill = NULL) +
+  theme(panel.grid = element_blank(), legend.position = "top")
+p_cmp; save_png(p_cmp, "12_perbandingan_sensitivitas_moran_geary", 12, 5.5)
+```
+
+```{r lisa-compute}
+lisa_one <- function(x, lw, seed) {
+  r <- localmoran_perm(x, lw, nsim = NSIM, iseed = seed, alternative = "two.sided", zero.policy = TRUE, no_repeat_in_row = TRUE)
+  q <- as.character(attr(r, "quadr")$mean)
+  q <- c("High-High" = "HH", "Low-Low" = "LL", "High-Low" = "HL", "Low-High" = "LH")[q]
+  p <- r[, "Pr(z != E(Ii)) Sim"]
+  tibble(Ii = r[, "Ii"], z = r[, "Z.Ii"], p = p, p_fdr = p.adjust(p, "BH"), p_bonf = p.adjust(p, "bonferroni"),
+         quad = unname(q), class_raw = ifelse(p < ALPHA, quad, "NS"), class_fdr = ifelse(p_fdr < ALPHA, quad, "NS"))
+}
+lisa <- bind_rows(lapply(seq_len(nrow(specs)), function(s) bind_rows(lapply(seq_along(VARS), function(v)
+  lisa_one(col[[VARS[v]]], LW[[specs$id[s]]], SEED + 1000L * s + 10L * v + 5L) |>
+    mutate(spec_id = specs$id[s], var = VARS[v], POLYID = col$POLYID))))) |>
+  relocate(spec_id, var, POLYID)
+save_csv(lisa, "19_lisa_semua_spesifikasi")
+lisa_summ <- lisa |> group_by(spec_id, var) |>
+  summarise(`Sig. (p mentah)` = sum(class_raw != "NS"), `Sig. (FDR)` = sum(class_fdr != "NS"),
+            `Sig. (Bonferroni)` = sum(p_bonf < ALPHA),
+            HH = sum(class_fdr == "HH"), LL = sum(class_fdr == "LL"), HL = sum(class_fdr == "HL"), LH = sum(class_fdr == "LH"),
+            .groups = "drop")
+ref_cls <- lisa |> filter(spec_id == REF) |> select(var, POLYID, ref_class = class_fdr, ref_raw = class_raw)
+kappa <- function(a, b) { lv <- union(a, b); po <- mean(a == b); pe <- sum(sapply(lv, function(l) mean(a == l) * mean(b == l)))
+  if (pe >= 1 - 1e-12) NA_real_ else (po - pe) / (1 - pe) }
+jaccard <- function(a, b) { A <- a != "NS"; B <- b != "NS"; if (!any(A | B)) NA_real_ else sum(A & B) / sum(A | B) }
+lisa_agree <- lisa |> left_join(ref_cls, by = c("var", "POLYID")) |> group_by(spec_id, var) |>
+  summarise(`Sama dgn acuan, FDR (%)` = 100 * mean(class_fdr == ref_class),
+            `Sama dgn acuan, p mentah (%)` = 100 * mean(class_raw == ref_raw),
+            `Kappa vs acuan (p mentah)` = kappa(class_raw, ref_raw), `Jaccard sig. vs acuan (p mentah)` = jaccard(class_raw, ref_raw),
+            `Kappa vs acuan (FDR)` = kappa(class_fdr, ref_class), .groups = "drop")
+lisa_summ <- left_join(lisa_summ, lisa_agree, by = c("spec_id", "var")) |>
+  left_join(select(specs, spec_id = id, label, order, family, style), by = "spec_id") |> arrange(var, order)
+save_csv(lisa_summ, "20_lisa_ringkasan_per_spesifikasi")
+kt(lisa_summ |> filter(spec_id == REF) |> select(var, `Sig. (p mentah)`:`Sig. (Bonferroni)`, HH:LH), 0)
+```
+
+```{r lisa-sens}
+sens_loc <- lisa_summ |> group_by(var) |>
+  summarise(`Sig. FDR min` = min(`Sig. (FDR)`), `Sig. FDR median` = median(`Sig. (FDR)`), `Sig. FDR maks` = max(`Sig. (FDR)`),
+            `Sig. p mentah min` = min(`Sig. (p mentah)`), `Sig. p mentah maks` = max(`Sig. (p mentah)`),
+            `Min % kelas sama (FDR)` = min(`Sama dgn acuan, FDR (%)`),
+            `Median kappa (p mentah)` = median(`Kappa vs acuan (p mentah)`, na.rm = TRUE),
+            `Min kappa (p mentah)` = suppressWarnings(min(`Kappa vs acuan (p mentah)`, na.rm = TRUE)),
+            `Median Jaccard (p mentah)` = median(`Jaccard sig. vs acuan (p mentah)`, na.rm = TRUE), .groups = "drop")
+kt(sens_loc, 2); save_csv(sens_loc, "20b_sensitivitas_lokal")
+```
+
+```{r lisa-maps, fig.height = 7.5}
+lisa_map <- function(spec, cls = "class_fdr", title_suffix = "") {
+  d <- col |> select(POLYID) |> left_join(filter(lisa, spec_id == spec), by = "POLYID") |>
+    mutate(cl = factor(.data[[cls]], names(COL_LISA)))
+  ggplot(d) + geom_sf(aes(fill = cl), colour = "white", linewidth = .25) +
+    scale_fill_manual(values = COL_LISA, drop = FALSE, name = NULL) +
+    facet_wrap(~var, ncol = 3) + theme_void(base_size = 10) +
+    labs(title = paste0("Peta klaster LISA: ", specs$label[specs$id == spec], title_suffix)) +
+    theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
+}
+p_lisa <- lisa_map(REF, "class_fdr", " (FDR 5%)")
+p_lisa; save_png(p_lisa, "13_lisa_cluster_map_acuan_fdr", 11, 7.5)
+save_png(lisa_map(REF, "class_raw", " (p mentah < 0,05)"), "14_lisa_cluster_map_acuan_pmentah", 11, 7.5)
+```
+
+```{r lisa-significance, fig.height = 7.5}
+sig_lv <- c("p ≤ 0,001", "p ≤ 0,01", "p ≤ 0,05", "Tidak signifikan")
+lisa <- lisa |> mutate(sig_band = cut(p_fdr, c(-Inf, .001, .01, .05, Inf), labels = sig_lv))
+p_sig <- ggplot(col |> select(POLYID) |> left_join(filter(lisa, spec_id == REF), by = "POLYID")) +
+  geom_sf(aes(fill = sig_band), colour = "white", linewidth = .25) + facet_wrap(~var, ncol = 3) +
+  scale_fill_manual(values = c("#0b5d1e", "#3c9d52", "#a8d5a2", "#ececec"), drop = FALSE, name = "p (FDR)") +
+  theme_void(base_size = 10) + labs(title = "Peta signifikansi LISA (p terkoreksi FDR): Queen · W") +
+  theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
+p_sig; save_png(p_sig, "15_lisa_significance_map_acuan", 11, 7.5)
+```
+
+```{r lisa-audit}
+meanI <- lisa |> filter(grepl("_W$", spec_id)) |> group_by(spec_id, var) |> summarise(mI = mean(Ii), .groups = "drop") |>
+  left_join(glob |> filter(index == "Moran's I") |> select(spec_id, var, stat), by = c("spec_id", "var"))
+d_meanI <- max(abs(meanI$mI - meanI$stat))
+own_lisa <- function(x, W, R, seed) {
+  set.seed(seed); n <- length(x); z <- x - mean(x); m2 <- sum(z^2) / n
+  sapply(seq_len(n), function(i) {
+    nb <- which(W[i, ] != 0); w <- W[i, nb]; others <- z[-i]
+    obs <- z[i] / m2 * sum(w * z[nb])
+    sim <- z[i] / m2 * replicate(R, sum(w * sample(others, length(nb))))   # tanpa pengembalian
+    min(1, 2 * min((sum(sim >= obs) + 1) / (R + 1), (sum(sim <= obs) + 1) / (R + 1)))
+  })
+}
+lisa_chk <- bind_rows(lapply(c("CRIME", "PLUMB"), function(v) {
+  ps <- own_lisa(col[[v]], Wq, NSIM, SEED + 6000L + match(v, VARS))
+  r <- lisa |> filter(spec_id == REF, var == v) |> arrange(POLYID)
+  se <- 2 * sqrt(pmax(r$p / 2, 1 / NSIM) * (1 - r$p / 2) / NSIM)
+  tibble(var = v, POLYID = r$POLYID, p_spdep = r$p, p_sendiri = ps, rasio = abs(r$p - ps) / (sqrt(2) * se))
+}))
+lisa_audit <- tibble(Pemeriksaan = c("Maks |rata-rata Iᵢ − I global| (16 W row-standardized × 6 variabel)",
+                                     "Permutasi bersyarat sendiri vs spdep: maks |Δp| / (√2 × SE Monte Carlo) (98 wilayah)",
+                                     "Persentase wilayah dengan rasio < 2",
+                                     "Klasifikasi signifikan p mentah sama (sendiri vs spdep)"),
+                     Nilai = c(format(d_meanI, digits = 3), format(max(lisa_chk$rasio), digits = 3),
+                               paste0(round(100 * mean(lisa_chk$rasio < 2), 1), "%"),
+                               paste0(sum((lisa_chk$p_spdep < ALPHA) == (lisa_chk$p_sendiri < ALPHA)), " dari ", nrow(lisa_chk))))
+kt(lisa_audit); save_csv(lisa_audit, "19b_audit_lisa"); save_csv(lisa_chk, "19c_audit_lisa_detail")
+stopifnot(d_meanI < 1e-10)
+```
+
+```{r lisa-v1-vs-v2}
+lisa_mode <- function(x, lw, seed, nr) { r <- localmoran_perm(x, lw, nsim = NSIM, iseed = seed, alternative = "two.sided", zero.policy = TRUE, no_repeat_in_row = nr)
+  p <- r[, "Pr(z != E(Ii)) Sim"]; c(raw = sum(p < ALPHA), fdr = sum(p.adjust(p, "BH") < ALPHA)) }
+cases <- bind_rows(tibble(spec = REF, var = VARS), tibble(spec = setdiff(specs$id, REF), var = "CRIME"))
+v1v2 <- bind_rows(lapply(seq_len(nrow(cases)), function(i) {
+  s <- match(cases$spec[i], specs$id); v <- match(cases$var[i], VARS); seed <- SEED + 1000L * s + 10L * v + 5L
+  a <- lisa_mode(col[[VARS[v]]], LW[[cases$spec[i]]], seed, FALSE); b <- lisa_mode(col[[VARS[v]]], LW[[cases$spec[i]]], seed, TRUE)
+  tibble(Spesifikasi = specs$label[s], Variabel = VARS[v], `Sig. p mentah, v1 (dgn pengembalian)` = a[["raw"]], `Sig. p mentah, v2` = b[["raw"]],
+         `Sig. FDR, v1` = a[["fdr"]], `Sig. FDR, v2` = b[["fdr"]]) }))
+kt(filter(v1v2, Spesifikasi == specs$label[specs$id == REF]))
+crime_v <- filter(v1v2, Variabel == "CRIME")
+cat(sprintf("CRIME, 32 W: total wilayah signifikan FDR v1 = %d, v2 = %d; W dengan ≥1 wilayah FDR: v1 = %d, v2 = %d\n",
+            sum(crime_v$`Sig. FDR, v1`), sum(crime_v$`Sig. FDR, v2`), sum(crime_v$`Sig. FDR, v1` > 0), sum(crime_v$`Sig. FDR, v2` > 0)))
+save_csv(v1v2, "19f_lisa_permutasi_v1_vs_v2")
+```
+
+```{r crime-fdr}
+cr <- lisa |> filter(spec_id == REF, var == "CRIME") |> arrange(p) |> mutate(rank = row_number(), bh_batas = rank * ALPHA / n(),
+  lolos_bh = cumsum(p <= bh_batas) > 0)
+crime_fdr <- tibble(
+  Besaran = c("Moran's I global (Queen·W) dan z permutasi", "Wilayah dengan p mentah < 0,05", "Harapan di bawah H₀ (49 × 0,05)",
+              "p mentah terkecil", "Batas BH untuk p terkecil (0,05/49)", "p mentah terkecil kedua dan batas BH-nya (2 × 0,05/49)",
+              "Wilayah lolos FDR", "Rata-rata jumlah tetangga Queen", "% Iᵢ bernilai positif",
+              "p terkecil yang mungkin dengan 9.999 permutasi"),
+  Nilai = c(sprintf("%.4f; z = %.2f", glob$stat[glob$spec_id == REF & glob$var == "CRIME" & glob$index == "Moran's I"],
+                    glob$z_perm[glob$spec_id == REF & glob$var == "CRIME" & glob$index == "Moran's I"]),
+            as.character(sum(cr$p < ALPHA)), format(49 * ALPHA), format(cr$p[1]), format(round(ALPHA / 49, 5)),
+            sprintf("%s; %s", format(cr$p[2]), format(round(2 * ALPHA / 49, 5))), as.character(sum(cr$p_fdr < ALPHA)),
+            format(round(mean(card(LW[[REF]]$neighbours)), 2)), paste0(round(100 * mean(cr$Ii > 0), 1), "%"),
+            format(2 / (NSIM + 1))))
+kt(crime_fdr); save_csv(crime_fdr, "19d_crime_global_vs_fdr")
+save_csv(cr, "19e_crime_lisa_queenW_urut_p")
+```
+
+```{r lisa-change, fig.height = 8}
+p_lchg <- ggplot(lisa_summ, aes(var, reorder(label, -order), fill = `Sama dgn acuan, FDR (%)`)) +
+  geom_tile(colour = "white") + geom_text(aes(label = `Sig. (FDR)`), size = 3) +
+  scale_fill_gradient(low = "#b03a2e", high = "#f4f6f7", limits = c(min(lisa_summ$`Sama dgn acuan, FDR (%)`), 100), name = "% kelas sama\ndgn Queen·W") +
+  labs(title = "Stabilitas klasifikasi LISA terhadap pilihan W", subtitle = "Warna: % dari 49 wilayah yang kelasnya sama dengan acuan · angka: jumlah wilayah signifikan (FDR)",
+       x = NULL, y = NULL) + theme(panel.grid = element_blank())
+p_lchg; save_png(p_lchg, "16_lisa_stabilitas_vs_acuan", 9, 9)
+```
+
+```{r lisa-region-grid, fig.height = 7}
+p_reg <- ggplot(filter(lisa, var == "CRIME") |> left_join(select(specs, spec_id = id, label, order), by = "spec_id"),
+                aes(factor(POLYID), reorder(label, -order), fill = factor(class_fdr, names(COL_LISA)))) +
+  geom_tile(colour = "white", linewidth = .2) + scale_fill_manual(values = COL_LISA, drop = FALSE, name = NULL) +
+  labs(title = "CRIME: kelas LISA (FDR) tiap wilayah pada 32 spesifikasi", x = "POLYID", y = NULL) +
+  theme(panel.grid = element_blank(), axis.text.x = element_text(size = 6, angle = 90))
+p_reg; save_png(p_reg, "17_lisa_kelas_per_wilayah_CRIME", 12, 8)
+region_stab <- lisa |> group_by(var, POLYID) |>
+  summarise(`Kelas modal` = names(which.max(table(class_fdr))), `Stabilitas (%)` = 100 * max(table(class_fdr)) / n(),
+            `Jumlah kelas berbeda` = n_distinct(class_fdr), .groups = "drop")
+save_csv(region_stab, "21_lisa_stabilitas_per_wilayah")
+```
+
+```{r local-support, fig.height = 7.5}
+lw_star <- nb2listw(include.self(LW$queen_B$neighbours), style = "B")
+loc_sup <- bind_rows(lapply(seq_along(VARS), function(v) {
+  x <- col[[VARS[v]]]
+  lc <- localC_perm(x, LW$queen_W, nsim = NSIM, iseed = SEED + 700L + v, zero.policy = TRUE, no_repeat_in_row = TRUE)
+  pc <- attr(lc, "pseudo-p")[, "Pr(z != E(Ci)) Sim"]
+  lg <- localG_perm(x, lw_star, nsim = NSIM, iseed = SEED + 800L + v, zero.policy = TRUE, no_repeat_in_row = TRUE)
+  pg <- attr(lg, "internals")[, "Pr(z != E(Gi)) Sim"]
+  tibble(var = VARS[v], POLYID = col$POLYID, localC = as.numeric(lc), localC_cluster = as.character(attr(lc, "cluster")),
+         localC_p = pc, localC_p_fdr = p.adjust(pc, "BH"), Gi_star_z = as.numeric(lg), Gi_p = pg, Gi_p_fdr = p.adjust(pg, "BH"))
+})) |> mutate(localC_class = ifelse(localC_p_fdr < ALPHA, localC_cluster, "Tidak signifikan"),
+              Gi_class = case_when(Gi_p_fdr < ALPHA & Gi_star_z > 0 ~ "Hot spot", Gi_p_fdr < ALPHA ~ "Cold spot", TRUE ~ "Tidak signifikan"))
+save_csv(loc_sup, "22_local_geary_dan_gistar_queen")
+mk <- function(fill, pal, ttl) ggplot(col |> select(POLYID) |> left_join(loc_sup, by = "POLYID")) +
+  geom_sf(aes(fill = .data[[fill]]), colour = "white", linewidth = .25) + facet_wrap(~var, ncol = 3) +
+  scale_fill_manual(values = pal, name = NULL) + theme_void(base_size = 10) + labs(title = ttl) +
+  theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
+p_gi <- mk("Gi_class", c("Hot spot" = "#c0392b", "Cold spot" = "#2471a3", "Tidak signifikan" = "#ececec"), "Getis–Ord Gi* (Queen + diri sendiri, FDR 5%)")
+p_lc <- mk("localC_class", c("High-High" = "#d7191c", "Low-Low" = "#2c7bb6", "Other Positive" = "#f5b041", "Negative" = "#7d3c98", "Tidak signifikan" = "#ececec"),
+           "Local Geary (Queen · W, FDR 5%)")
+p_gi; save_png(p_gi, "18_getis_ord_gistar_queen", 11, 7.5); save_png(p_lc, "19_local_geary_queen", 11, 7.5)
+p_lc
+sup_cmp <- loc_sup |> left_join(filter(lisa, spec_id == REF) |> select(var, POLYID, class_fdr), by = c("var", "POLYID")) |>
+  group_by(var) |> summarise(`LISA HH` = sum(class_fdr == "HH"), `Gi* hot` = sum(Gi_class == "Hot spot"),
+    `HH ∩ hot` = sum(class_fdr == "HH" & Gi_class == "Hot spot"), `LISA LL` = sum(class_fdr == "LL"),
+    `Gi* cold` = sum(Gi_class == "Cold spot"), `LL ∩ cold` = sum(class_fdr == "LL" & Gi_class == "Cold spot"),
+    `Local Geary sig.` = sum(localC_class != "Tidak signifikan"), .groups = "drop")
+kt(sup_cmp, 0); save_csv(sup_cmp, "23_perbandingan_lisa_gistar_localgeary")
+```
+
+```{r global-local}
+gl <- glob |> filter(index == "Moran's I") |> select(spec_id, var, label, order, `Moran global` = conclusion, z_perm) |>
+  left_join(lisa_summ |> select(spec_id, var, HH, LL, HL, LH, `Sig. (FDR)`, `Sig. (p mentah)`), by = c("spec_id", "var")) |>
+  mutate(`Klaster (HH+LL)` = HH + LL, `Outlier (HL+LH)` = HL + LH,
+         Sejalan = case_when(`Moran global` == "Positif" ~ `Klaster (HH+LL)` > 0 & `Klaster (HH+LL)` >= `Outlier (HL+LH)`,
+                             `Moran global` == "Negatif" ~ `Outlier (HL+LH)` > `Klaster (HH+LL)`,
+                             TRUE ~ `Sig. (FDR)` == 0))
+gl_summ <- gl |> group_by(var) |> summarise(`% spesifikasi sejalan` = 100 * mean(Sejalan),
+  `Median wilayah klaster (FDR)` = median(`Klaster (HH+LL)`), `Median outlier (FDR)` = median(`Outlier (HL+LH)`), .groups = "drop")
+kt(gl_summ, 1); save_csv(gl, "24_konsistensi_global_lokal"); save_csv(gl_summ, "25_konsistensi_global_lokal_ringkasan")
+```
+
+```{r moran-scatter, fig.height = 6}
+ms <- bind_rows(lapply(VARS, function(v) { z <- as.numeric(scale(col[[v]])); tibble(var = v, POLYID = col$POLYID, z = z, lag = lag.listw(LW[[REF]], z)) })) |>
+  left_join(filter(lisa, spec_id == REF) |> select(var, POLYID, class_fdr), by = c("var", "POLYID"))
+p_ms <- ggplot(ms, aes(z, lag)) + geom_hline(yintercept = 0, colour = "grey60") + geom_vline(xintercept = 0, colour = "grey60") +
+  geom_smooth(method = "lm", se = FALSE, colour = "grey30", linewidth = .5) +
+  geom_point(aes(colour = factor(class_fdr, names(COL_LISA))), size = 1.8) + scale_colour_manual(values = COL_LISA, drop = FALSE, name = "LISA (FDR)") +
+  facet_wrap(~var, ncol = 3) + labs(title = "Moran scatterplot (Queen · W)", x = "z (nilai terstandardisasi)", y = "Lag spasial Wz")
+p_ms; save_png(p_ms, "20_moran_scatterplot_acuan", 11, 7)
+```
+
+```{r export}
+rings <- lapply(seq_len(nrow(col)), function(i) {
+  m <- st_coordinates(st_geometry(col)[[i]])
+  grp <- interaction(as.data.frame(m[, grep("^L", colnames(m)), drop = FALSE]), drop = TRUE)
+  unname(lapply(split(seq_len(nrow(m)), grp), function(r) round(unname(m[r, 1:2]), 5)))
+})
+edges_all <- lapply(specs$id, function(id) { nb <- LW[[id]]$neighbours   # pasangan tak berarah unik (indeks 1..49)
+  e <- do.call(rbind, lapply(seq_along(nb), function(i) cbind(pmin(i, nb[[i]]), pmax(i, nb[[i]]))))
+  unique(e) })
+names(edges_all) <- specs$id
+results <- list(
+  meta = list(title = "Ketika Definisi Tetangga Mengubah Realitas Spasial: Kritik terhadap Moran's I dan Geary's C", version = "2",
+              data_source = data_source, n = nrow(col), nsim = NSIM, seed = SEED, alpha = ALPHA, ref = REF,
+              generated = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+              r = R.version.string, spdep = as.character(packageVersion("spdep")), sf = as.character(packageVersion("sf")),
+              distance_unit = "satuan peta (koordinat digitasi arbitrer; CRS tidak terdefinisi)",
+              d1max = d1max, vars = VARS, var_desc = as.list(var_desc)),
+  regions = list(POLYID = col$POLYID, rings = rings, centroid = round(unname(cc), 5)),
+  values = st_drop_geometry(col)[, c("POLYID", VARS)],
+  descriptives = desc, specs = select(specs, -key), global = glob,
+  sensitivity_num = sens_num, sensitivity_inf = sens_inf, sensitivity_local = sens_loc, sensitivity_family = sens_fam,
+  slopes = slopes, standardization = std_summ, standardization_mechanism = std_mech, agreement = agree, agreement_rate = agree_rate,
+  jackknife = jk_summ, rank = rank_summ, comparison = cmp_tab, comparison_count = cmp_count,
+  audit = audit, lisa_audit = lisa_audit, spec_search = ss, crime_fdr = crime_fdr, noise_dz = NOISE_DZ,
+  lisa = select(lisa, spec_id, var, POLYID, Ii, z, p, p_fdr, quad, class_raw, class_fdr),
+  lisa_summary = lisa_summ, local_support = loc_sup, global_local = gl, edges = edges_all)
+saveRDS(c(results, list(sf = col)), file.path(OUT, "rds", "columbus_results.rds"))
+saveRDS(LW, file.path(OUT, "rds", "weights_listw.rds"))
+json_txt <- toJSON(results, dataframe = "columns", digits = I(10), auto_unbox = TRUE, na = "null")
+writeLines(json_txt, file.path(OUT, "json", "columbus_results.json"))
+
+# Dashboard HTML: sisipkan JSON yang sama ke template (sumber tunggal)
+tpl <- "dashboard_html/template.html"
+if (file.exists(tpl)) {
+  html <- paste(readLines(tpl, encoding = "UTF-8"), collapse = "\n")
+  html <- sub("/*__DATA__*/null", gsub("</", "<\\/", json_txt, fixed = TRUE), html, fixed = TRUE)
+  fonts <- list.files("assets/fonts", "^inter-.*\\.woff2$", full.names = TRUE)
+  ff <- vapply(fonts, function(f) {
+    fam <- "Inter"
+    wt <- regmatches(f, regexpr("[0-9]{3}", f))
+    sprintf("@font-face{font-family:'%s';font-weight:%s;font-style:normal;font-display:swap;src:url(data:font/woff2;base64,%s) format('woff2')}",
+            fam, wt, jsonlite::base64_enc(readBin(f, "raw", file.info(f)$size)))
+  }, "")
+  html <- sub("/*__FONTS__*/", paste(ff, collapse = "\n"), html, fixed = TRUE)
+  writeLines(html, "dashboard_html/index.html", useBytes = TRUE)
+}
+tibble(Berkas = c(list.files(file.path(OUT, "csv")), list.files(file.path(OUT, "png")),
+                  list.files(file.path(OUT, "rds")), list.files(file.path(OUT, "json")))) |>
+  mutate(Folder = sub(".*\\.", "", Berkas)) |> count(Folder, name = "Jumlah berkas") |> kt()
+```
