@@ -1008,7 +1008,7 @@ function drawDashboard() {
       $("#hasil").before(purposeSection(), answer); $("#sensitivitas").after(cls, pow, letak); $("#ringkasan").after(design);
       drawRewire(); revControls();
       const b = $("#btnRec"); b.textContent = L(`Tampilkan matriks yang disarankan (${LB(RM.rec_label)})`, `Show recommended matrix (${LB(RM.rec_label)})`); b.hidden = false;
-      b.addEventListener("click", () => selectSpec(RM.rec_id));
+      b.onclick = () => selectSpec(RM.rec_id); // drawDashboard runs on every render: onclick keeps one handler
     } else {
       $("#hasil").before(el("div", { class: "state err", role: "alert", style: "margin-bottom:32px" },
         L("Hasil simulasi belum disematkan. Knit Columbus_Spatial_Analysis.Rmd; bab simulasi menulis hasilnya ke halaman ini.", "Simulation results are not embedded yet. Knit Columbus_Spatial_Analysis.Rmd; the simulation chapter writes them into this page.")));

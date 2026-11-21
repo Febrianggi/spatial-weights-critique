@@ -236,6 +236,8 @@ with sync_playwright() as p:
     # Read animation keyframes in the interaction task, independent of the test runner's speed.
     page.click("#tab-tables")
     page.click("#btnRef")
+    # Let the rows settle first: a row still sliding from the previous selection already sits near its new place.
+    page.evaluate("document.getAnimations().forEach(a => a.finish())")
     def pin_motion():
         return page.evaluate("""() => {
             document.querySelector("#btnRec").click();
