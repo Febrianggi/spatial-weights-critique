@@ -14,7 +14,7 @@ This project measures how far the results move when only the definition of neigh
 
 | Finding | Evidence |
 |---|---|
-| Local cluster maps can be cherry-picked | Significant LISA cluster regions (FDR 5%) range from **0 to 30** across the 32 matrices; the Queen · W reference gives **4** |
+| Local cluster maps can be cherry-picked | Neighbourhoods with significant local Moran statistics after 5% FDR correction range from **0 to 30** across the 32 matrices (High-High and Low-Low clusters plus High-Low and Low-High outliers; High-High alone **0 to 22**); the Queen · W reference gives **4**, all High-High |
 | Effect size depends heavily on *W* | Moran's I ranges from **0.153 to 0.607** for the same data (Geary's C: 0.325 to 0.846) |
 | The direction is stable | CRIME is significantly clustered under all 32 matrices; no matrix flips the sign |
 | Some matrices are far more robust | In a simulation with 5 known spatial patterns, **1/d · W** loses at most 12 percentage points of power against the best matrix for each pattern; **k = 2** and wide distance bands lose up to 39 |
@@ -66,7 +66,9 @@ English is the default. Use the language switch in the header, or open `index.ht
 | `output/csv/` | 42 result tables (data checks, global tests, sensitivity, LISA, jackknife, …) |
 | `output/simulasi/` | Simulation results: criteria per matrix, power, calibration, computational tests, figures |
 | `output/png/`, `output/json/`, `output/rds/` | Figures, JSON for the dashboard, R objects (results and 32 `listw` objects) |
-| `assets/fonts/` | Inter (SIL Open Font License, included) |
+| `analysis/style.R` | Shared archive palette and ggplot theme: one colour per class in every figure, map and the dashboard |
+| `assets/fonts/` | Inter and Source Serif 4 (SIL Open Font License, included) |
+| `assets/cover/` | Cover illustration (house and sedan) used on the landing page and the report |
 | `tests/` | Output validation, reproducibility check, dashboard browser test |
 | `docs/CHANGELOG.id.md` | Change log (Bahasa Indonesia) |
 

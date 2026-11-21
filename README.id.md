@@ -14,7 +14,7 @@ Proyek ini mengukur seberapa jauh hasil bergeser bila yang diganti hanya definis
 
 | Temuan | Bukti |
 |---|---|
-| Peta klaster lokal bisa dipilih sesuka hati | Jumlah wilayah klaster LISA yang signifikan (FDR 5%) berkisar **0 sampai 30** di antara 32 matriks; acuan Queen · W memberi **4** |
+| Peta klaster lokal bisa dipilih sesuka hati | Jumlah wilayah dengan LISA signifikan setelah FDR 5% berkisar **0 sampai 30** di antara 32 matriks (klaster Tinggi-Tinggi dan Rendah-Rendah ditambah pencilan Tinggi-Rendah dan Rendah-Tinggi; Tinggi-Tinggi saja **0 sampai 22**); acuan Queen · W memberi **4**, semuanya Tinggi-Tinggi |
 | Besar efek sangat bergantung pada *W* | Moran's I berkisar **0,153 sampai 0,607** untuk data yang sama (Geary's C: 0,325 sampai 0,846) |
 | Arahnya stabil | CRIME mengelompok secara signifikan pada ke-32 matriks; tidak ada matriks yang membalik tandanya |
 | Sebagian matriks jauh lebih robust | Dalam simulasi dengan 5 pola spasial yang diketahui, **1/d · W** paling banyak kehilangan 12 poin persen daya dibanding matriks terbaik untuk setiap pola; **k = 2** dan pita jarak lebar kehilangan sampai 39 |
@@ -66,7 +66,9 @@ Bahasa Inggris adalah bawaan. Gunakan tombol bahasa di header, atau buka `index.
 | `output/csv/` | 42 tabel hasil (validasi data, uji global, sensitivitas, LISA, jackknife, …) |
 | `output/simulasi/` | Hasil simulasi: kriteria per matriks, daya, kalibrasi, uji komputasi, grafik |
 | `output/png/`, `output/json/`, `output/rds/` | Grafik, JSON untuk dashboard, objek R (hasil dan 32 objek `listw`) |
-| `assets/fonts/` | Inter (SIL Open Font License, disertakan) |
+| `analysis/style.R` | Palet arsip dan tema ggplot bersama: satu warna per kelas di semua grafik, peta, dan dashboard |
+| `assets/fonts/` | Inter dan Source Serif 4 (SIL Open Font License, disertakan) |
+| `assets/cover/` | Ilustrasi sampul (rumah dan sedan) untuk halaman depan dan laporan |
 | `tests/` | Validasi keluaran, cek reprodusibilitas, uji dashboard di browser |
 | `docs/CHANGELOG.id.md` | Catatan perubahan |
 

@@ -3,61 +3,172 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FACC15'/%3E%3Cpath d='M-4 20 20-4h8L-4 28zM4 36 36 4v8L12 36z' fill='%23111827'/%3E%3C/svg%3E">
-<meta name="description" content="Columbus crime data, 32 spatial weights matrices: how much Moran's I, Geary's C and LISA change when only the definition of neighbour changes.">
-<title>When the definition of neighbour changes spatial reality</title>
+<meta name="description" content="Columbus crime data under 32 spatial weights matrices: how Moran's I, Geary's C and LISA change when the definition of neighbour changes.">
+<title>Residential burglaries and vehicle thefts in Columbus, 1980</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' fill='%23FAFAF7' stroke='%2317233B' stroke-width='2'/%3E%3Cpath d='M9 3v26' stroke='%237D1F31' stroke-width='3'/%3E%3Cpath d='M12 10h13M12 15h13M12 20h13M12 25h13' stroke='%23C9D3DF' stroke-width='1.5'/%3E%3C/svg%3E">
 <style>
 @font-face{font-family:"Inter";font-weight:400;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-weight:600;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-weight:700;font-style:normal;font-display:swap;src:url("assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
-:root{--bg:#0A101C;--surface:#111B2E;--line:#22324F;--line-strong:#2E4266;--text:#E6EBF3;--muted:#A3B1C6;--faint:#8494AD;--accent:#FACC15;--accent-ink:#111827;color-scheme:dark}
+@font-face{font-family:"Source Serif 4";font-weight:600;font-style:normal;font-display:swap;src:url("assets/fonts/source-serif-4-latin-600-normal.woff2") format("woff2")}
+/* statistical-archive tokens, shared with report_assets/report.css and dashboard_html/template.html */
+:root{color-scheme:light;--paper:#F1F1EC;--field:#FAFAF7;--ink:#17233B;--muted:#4B5566;--rule:#C9D3DF;--wine:#7D1F31;--serif:"Source Serif 4",Georgia,"Times New Roman",serif}
 *{box-sizing:border-box}
-html{background:var(--bg)}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(55% 60% at 85% 10%,rgba(250,204,21,.08),transparent 60%),var(--bg);color:var(--text);font:400 17px/1.65 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-html:not([data-lang="id"]) .id{display:none!important}
-html[data-lang="id"] .en{display:none!important}
-:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
-.wrap{width:100%;max-width:1040px;margin:0 auto;padding:0 24px}
-.top{display:flex;justify-content:flex-end;padding-top:20px}
-.lang{display:flex;gap:2px;padding:3px;border:1px solid var(--line-strong);border-radius:999px}
-.lang button{font:inherit;font-size:13.5px;font-weight:600;min-height:38px;min-width:44px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}
-.lang button:hover{color:var(--text)}
-.lang button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
-main{flex:1}
-.kicker{font-size:15px;font-weight:600;color:var(--accent);margin:72px 0 12px}
-h1{font-size:clamp(34px,5vw,58px);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:0;max-width:17ch}
-.lead{font-size:18.5px;color:var(--muted);max-width:60ch;margin:24px 0 0}
-.tape{height:34px;margin:56px -4% 0;transform:rotate(-.6deg);background:repeating-linear-gradient(-45deg,#FACC15 0 24px,#111827 24px 48px);box-shadow:0 6px 18px rgba(0,0,0,.45)}
-.go{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:48px 0 72px}
-.go a{display:block;min-width:0;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);text-decoration:none}
-.go a:hover{border-color:var(--accent)}
-.go strong{display:block;font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
-.go span.d{display:block;color:var(--muted);font-size:15.5px;line-height:1.55}
-.go .first strong{color:var(--accent)}
-footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--faint);font-size:14px}
-footer p{margin:0 0 6px}
-@media (max-width:680px){.go{grid-template-columns:minmax(0,1fr)}.kicker{margin-top:48px}body{font-size:16px}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 Inter,system-ui,sans-serif}
+h1,h2,p,figure{margin:0}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--wine);outline-offset:3px}
+html:not([data-lang="id"]) .id,html[data-lang="id"] .en{display:none!important}
+.wrap{width:min(100%,1200px);margin-inline:auto;padding-inline:clamp(16px,4.2vw,48px)}
+header{border-bottom:1px solid var(--rule)}
+header .wrap,.top-nav,.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+header .wrap{justify-content:space-between}
+.brand{display:inline-flex;align-items:center;gap:11px;font-weight:600;min-height:48px}
+.brand::before{content:"";width:16px;height:18px;border:1.5px solid var(--ink);border-left:4px solid var(--wine);background:repeating-linear-gradient(var(--field) 0 4px,var(--rule) 4px 5px)}
+.top-nav{font-size:14px}
+.top-nav a{line-height:44px}
+.lang{display:flex;gap:2px}
+.lang button{padding:0 10px;min-width:44px;min-height:48px;font:600 13px Inter,system-ui,sans-serif;color:var(--muted);background:transparent;border:0;border-bottom:2px solid transparent;cursor:pointer}
+.lang button[aria-pressed="true"]{border-bottom-color:var(--wine);color:var(--wine)}
+/* cover (A) */
+.hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:clamp(20px,4vw,48px);padding-block:clamp(28px,5vw,60px) clamp(20px,3vw,36px)}
+.place{display:inline-block;font:600 17px/1.3 var(--serif);padding-top:9px;border-top:2px solid var(--wine)}
+h1{font:600 clamp(38px,5.4vw,66px)/1.02 var(--serif);letter-spacing:-.015em;margin-top:16px;max-width:13ch}
+.unit{font-size:clamp(16px,1.6vw,19px);margin-top:14px}
+.lead{color:var(--muted);font-size:clamp(15px,1.5vw,17px);max-width:40ch;margin-top:14px}
+.scope{font-size:14px;font-weight:600;margin-top:14px}
+.scope span[aria-hidden]{color:var(--wine);margin-inline:5px}
+.actions{margin-top:22px}
+.actions a{display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:600;text-underline-offset:3px}
+.actions .primary{padding:7px 16px;background:var(--wine);color:#fff;border:1px solid transparent;border-radius:2px;text-decoration:none}
+.actions .primary:hover{background:#5E1724;text-decoration:underline}
+.cover img{display:block;width:100%;height:auto;mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent),linear-gradient(180deg,transparent,#000 7%,#000 88%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent),linear-gradient(180deg,transparent,#000 7%,#000 88%,transparent);mask-composite:intersect;-webkit-mask-composite:source-in}
+/* register (C) */
+.register{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(20px,4vw,48px);border-top:1.5px solid var(--ink);padding-block:24px 28px;align-items:start}
+.plate{border:1px solid var(--rule);border-top:1.5px solid var(--ink);background:var(--field)}
+.plate-head{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;align-items:baseline;padding:10px 14px;font:600 16px var(--serif);border-bottom:1px solid var(--rule)}
+.plate-note{font:400 13px Inter,system-ui,sans-serif;color:var(--muted)}
+.map-field svg{display:block;width:100%;height:auto}
+.map-field path{stroke:#fff;stroke-width:.85px;vector-effect:non-scaling-stroke}
+.legend{padding:10px 14px 11px;font-size:12px;border-top:1px solid var(--rule)}
+.ramp{height:8px;margin-top:6px;background:linear-gradient(90deg,#E6EBF1 20%,#BCC9DA 20% 40%,#8AA1BF 40% 60%,#55739D 60% 80%,#24477A 80%)}
+.breaks{position:relative;min-height:20px;color:var(--muted);font-variant-numeric:tabular-nums}
+.breaks>span{position:absolute;left:calc(var(--stop) * 20%);transform:translateX(-50%)}
+.breaks>span:first-child{transform:none}.breaks>span:last-child{transform:translateX(-100%)}
+.findings{list-style:none;margin:0;padding:0;border-left:2px solid var(--wine)}
+.findings li{padding:12px 0 14px 16px;border-bottom:1px solid var(--rule)}
+.findings li:first-child{padding-top:0}
+.range{font:600 clamp(44px,6vw,72px)/1 var(--serif);color:var(--wine);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+h2{font:600 clamp(20px,2.4vw,27px)/1.15 var(--serif);margin-top:6px}
+.findings p:not(.range){margin-top:6px;color:var(--muted)}
+.go{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;font-weight:600}
+.go a{display:inline-flex;align-items:center;min-height:44px;text-underline-offset:3px}
+footer{font-size:13px;color:var(--muted);padding-block:15px 28px;border-top:1px solid var(--rule)}
+@media (max-width:760px){.hero,.register{grid-template-columns:1fr}.hero{align-items:start}.cover{max-width:520px}}
+@media (max-width:370px){.top-nav{gap:4px 10px}.legend{padding-inline:9px}}
 </style>
 </head>
 <body>
-<div class="wrap top">
-<div class="lang" role="group" aria-label="Language / Bahasa"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="id" aria-pressed="false">ID</button></div>
-</div>
-<main class="wrap">
-<p class="kicker"><span class="en">A critique of Moran's I, Geary's C and LISA</span><span class="id">Kritik terhadap Moran's I, Geary's C, dan LISA</span></p>
-<h1><span class="en">When the definition of neighbour changes spatial reality</span><span class="id">Ketika definisi tetangga mengubah realitas spasial</span></h1>
-<p class="lead"><span class="en">Burglaries and vehicle thefts in the 49 neighbourhoods of Columbus, Ohio (1980), tested under 32 spatial weights matrices. The data never change; only the rule for who counts as a neighbour does.</span><span class="id">Pencurian rumah dan kendaraan di 49 lingkungan Columbus, Ohio (1980), diuji dengan 32 matriks bobot spasial. Datanya tidak pernah berubah; yang berubah hanya aturan siapa yang dihitung sebagai tetangga.</span></p>
-<div class="tape" aria-hidden="true"></div>
-<nav class="go" aria-label="Pages">
-<a class="first" id="goReport" href="reports/Columbus_Spatial_Analysis.html"><strong><span class="en">Read the report</span><span class="id">Baca laporan</span></strong><span class="d"><span class="en">The full argument for CRIME in eleven chapters: global and local tests under every matrix, the robustness simulation, and which matrix to use when nothing else is known.</span><span class="id">Argumen lengkap untuk CRIME dalam sebelas bab: uji global dan lokal pada setiap matriks, simulasi robustness, dan matriks yang dipakai bila tidak ada informasi lain.</span></span></a>
-<a id="goDash" href="dashboard_html/index.html"><strong><span class="en">Open the dashboard</span><span class="id">Buka dashboard</span></strong><span class="d"><span class="en">Pick any of the 32 matrices and see the Moran and Geary results, maps, local clusters and simulation class change with it.</span><span class="id">Pilih salah satu dari 32 matriks dan lihat hasil Moran dan Geary, peta, klaster lokal, dan kelas simulasinya ikut berubah.</span></span></a>
+<header><div class="wrap">
+<div class="brand">Spatial Weights Critique</div>
+<nav class="top-nav" aria-label="Research and language / Riset dan bahasa">
+<a id="reportHome" href="reports/Columbus_Spatial_Analysis.html"><span class="en">Research report</span><span class="id">Laporan riset</span></a>
+<div class="lang" role="group" aria-label="Language / Bahasa"><button type="button" data-lang="en" aria-pressed="true" aria-label="English">EN</button><button type="button" data-lang="id" aria-pressed="false" aria-label="Bahasa Indonesia">ID</button></div>
 </nav>
+</div></header>
+<main class="wrap">
+<div class="hero">
+<div>
+<p class="place">Columbus, Ohio / 1980</p>
+<h1><span class="en">Residential burglaries and vehicle thefts</span><span class="id">Pencurian rumah dan kendaraan</span></h1>
+<p class="unit"><span class="en">combined, per 1,000 households</span><span class="id">digabung, per 1.000 rumah tangga</span></p>
+<p class="lead"><span class="en">How does the map of theft clusters change when we redefine who counts as a neighbour?</span><span class="id">Bagaimana peta klaster pencurian berubah ketika definisi tetangga diganti?</span></p>
+<p class="scope"><span class="en">49 neighbourhoods</span><span class="id">49 wilayah</span><span aria-hidden="true">/</span><span class="en">32 spatial weights matrices</span><span class="id">32 matriks bobot spasial</span></p>
+<nav class="actions" aria-label="Explore the study / Jelajahi riset">
+<a class="primary" id="goDash" href="dashboard_html/index.html"><span class="en">Open Dashboard</span><span class="id">Buka Dashboard</span></a>
+<a id="goReport" href="reports/Columbus_Spatial_Analysis.html"><span class="en">Read the report</span><span class="id">Baca laporan</span></a>
+</nav>
+</div>
+<figure class="cover">
+<img src="assets/cover/rumah-dan-kendaraan-1200.webp" srcset="assets/cover/rumah-dan-kendaraan-800.webp 800w, assets/cover/rumah-dan-kendaraan-1200.webp 1200w" sizes="(max-width:760px) 92vw, 600px" width="1200" height="800" alt="" fetchpriority="high">
+</figure>
+</div>
+<section class="register" aria-label="Map and key finding / Peta dan temuan utama">
+<figure class="plate">
+<figcaption class="plate-head"><span class="en">Theft rate by neighbourhood</span><span class="id">Tingkat pencurian per wilayah</span><span class="plate-note en">Five quintiles</span><span class="plate-note id">Lima kuintil</span></figcaption>
+<div class="map-field">
+<!-- Geometry and CRIME quintiles from output/json/columbus_results.json. Coordinates are in the dataset's map units. -->
+<svg viewBox="0 0 460 310" role="img" aria-labelledby="crime-map-title crime-map-desc" fill-rule="evenodd">
+<title id="crime-map-title">Columbus, Ohio (1980)</title>
+<desc id="crime-map-desc">Crime rates are highest in many of the central neighbourhoods.</desc>
+<path d="M233.06,50.05L228.47,14.00L246.28,14.57L246.21,21.56L254.12,21.41L266.09,21.99L267.00,49.49L260.95,49.71L260.51,67.31L246.90,66.81L235.15,66.38L234.40,60.56L233.67,54.79L233.19,51.00L233.06,50.05Z" fill="#E6EBF1"/>
+<path d="M206.58,50.05L208.72,50.55L212.14,50.55L215.91,50.63L220.26,50.63L227.38,50.20L233.06,50.05L233.19,51.00L233.67,54.79L234.40,60.56L235.15,66.38L235.78,73.38L236.09,76.82L231.72,78.42L229.87,78.28L228.67,78.18L227.09,78.19L225.38,78.25L224.42,78.46L222.31,78.92L221.32,79.77L219.32,81.70L218.18,81.91L216.16,82.01L215.19,82.05L211.63,82.21L208.85,82.34L209.34,85.40L204.93,86.40L204.71,85.19L203.93,81.62L202.72,77.06L200.66,75.28L197.66,74.64L195.24,74.71L193.10,73.71L191.75,71.00L191.25,69.29L188.49,65.20L188.50,64.46L188.76,53.62L184.99,49.55L196.53,48.13L199.10,50.34L201.52,50.84L203.52,50.77L206.58,50.05Z" fill="#E6EBF1"/>
+<path d="M235.15,66.38L246.90,66.81L260.51,67.31L260.51,71.37L284.38,73.15L284.94,90.11L281.16,96.24L279.40,96.30L277.32,96.10L277.17,98.45L273.89,99.45L273.47,96.45L271.76,96.81L271.40,87.76L253.45,87.24L236.88,86.77L236.09,76.82L235.78,73.38L235.15,66.38Z" fill="#8AA1BF"/>
+<path d="M221.32,79.77L222.31,78.92L224.42,78.46L225.38,78.25L227.09,78.19L228.67,78.18L229.87,78.28L231.72,78.42L236.09,76.82L236.88,86.77L237.43,92.66L233.35,92.67L230.51,92.50L229.28,92.54L227.60,92.36L226.87,92.31L224.59,92.31L221.31,92.31L220.69,95.16L219.88,95.09L215.68,94.31L216.04,93.03L211.12,94.31L209.55,95.16L208.48,95.73L206.20,96.45L202.93,96.09L202.93,94.45L202.71,92.95L205.21,88.11L204.93,86.40L209.34,85.40L208.85,82.34L211.63,82.21L215.19,82.05L216.16,82.01L218.18,81.91L219.32,81.70L221.32,79.77Z" fill="#8AA1BF"/>
+<path d="M237.43,92.66L236.88,86.77L253.45,87.24L271.40,87.76L271.76,96.81L273.47,96.45L273.89,99.45L277.17,98.45L277.32,96.10L279.40,96.30L281.16,96.24L282.02,99.38L288.50,99.02L283.64,118.85L276.72,147.10L276.52,147.98L255.85,148.10L242.59,148.19L240.90,129.98L237.43,92.66Z" fill="#55739D"/>
+<path d="M288.50,99.02L290.86,88.76L303.04,88.48L306.32,88.90L308.88,88.55L308.81,92.25L320.21,91.76L334.82,91.90L338.59,95.25L343.72,97.96L344.08,103.87L343.15,104.66L342.15,105.87L340.87,106.94L339.73,107.65L339.87,113.71L338.09,113.85L337.30,114.49L334.95,114.28L333.17,116.98L314.94,117.44L308.16,117.12L307.73,118.76L283.64,118.85L288.50,99.02Z" fill="#BCC9DA"/>
+<path d="M191.24,94.95L193.02,95.16L193.73,96.87L196.80,96.94L197.87,97.16L202.63,97.21L202.07,99.35L201.35,100.49L200.30,101.83L198.54,104.06L197.72,104.75L197.23,105.39L196.38,107.42L196.04,108.25L201.50,108.61L209.48,109.14L215.68,109.42L221.11,130.85L218.87,131.58L217.95,133.36L213.60,133.53L209.11,133.71L208.54,136.42L205.12,136.85L204.26,139.77L199.56,139.84L198.91,142.41L196.00,142.34L193.00,142.26L192.29,140.91L192.29,134.57L192.01,129.01L190.87,129.86L189.52,130.08L187.81,130.01L185.88,128.44L183.11,124.59L181.33,120.88L180.54,119.89L179.40,119.82L179.19,114.11L179.05,111.76L177.98,109.70L177.48,107.42L177.20,102.00L176.06,98.86L174.57,95.73L174.43,94.38L181.55,94.87L181.62,92.31L188.32,92.67L188.46,94.45L191.24,94.95Z" fill="#E6EBF1"/>
+<path d="M206.20,96.45L208.48,95.73L209.55,95.16L211.12,94.31L216.04,93.03L215.68,94.31L219.88,95.09L220.69,95.16L221.31,92.31L224.59,92.31L226.87,92.31L227.60,92.36L229.28,92.54L230.51,92.50L233.35,92.67L237.43,92.66L240.90,129.98L235.04,130.17L231.13,130.30L230.34,130.65L225.43,130.76L221.11,130.85L215.68,109.42L209.48,109.14L201.50,108.61L196.04,108.25L196.38,107.42L197.23,105.39L197.72,104.75L198.54,104.06L200.30,101.83L201.35,100.49L202.07,99.35L202.63,97.21L202.93,96.09L206.20,96.45Z" fill="#8AA1BF"/>
+<path d="M283.64,118.85L307.73,118.76L308.16,117.12L314.94,117.44L333.17,116.98L327.67,139.43L331.52,139.93L337.08,135.87L337.16,136.86L337.39,139.60L337.56,141.64L337.73,143.77L337.87,145.39L338.00,147.06L332.30,157.96L314.34,161.59L311.49,167.15L299.52,167.15L293.50,167.11L287.40,167.08L287.19,164.87L278.28,164.62L268.74,164.36L270.34,162.62L271.73,161.10L273.23,159.02L274.58,155.48L275.10,154.11L275.63,152.13L276.52,147.98L276.72,147.10L283.64,118.85Z" fill="#8AA1BF"/>
+<path d="M337.08,135.87L337.79,134.52L340.22,131.81L344.21,127.03L350.27,120.12L351.84,120.62L353.76,120.84L354.90,121.19L357.46,120.70L359.32,120.69L360.96,120.62L363.31,120.34L365.09,119.63L365.09,118.84L369.29,118.91L371.57,118.91L374.21,119.34L376.28,119.48L376.78,120.84L376.85,122.62L377.49,124.04L377.27,125.68L377.34,127.04L377.27,127.96L376.70,129.03L376.77,130.81L376.27,133.24L375.91,134.59L375.99,136.37L376.27,137.66L376.41,139.44L376.05,142.14L376.84,144.07L376.69,146.06L377.26,147.85L377.40,149.49L377.53,150.39L366.94,152.16L356.63,153.89L343.92,156.01L332.30,157.96L338.00,147.06L337.87,145.39L337.73,143.77L337.56,141.64L337.39,139.60L337.16,136.86L337.08,135.87Z" fill="#8AA1BF"/>
+<path d="M230.34,130.65L231.13,130.30L235.04,130.17L240.90,129.98L242.59,148.19L238.53,148.47L238.03,151.75L233.68,151.82L233.48,142.20L229.41,141.84L230.34,130.65Z" fill="#24477A"/>
+<path d="M221.11,130.85L225.43,130.76L230.34,130.65L229.41,141.84L233.48,142.20L233.68,151.82L230.12,151.85L224.87,151.89L223.31,143.22L221.11,130.85Z" fill="#24477A"/>
+<path d="M198.91,142.41L199.56,139.84L204.26,139.77L205.12,136.85L208.54,136.42L209.11,133.71L213.60,133.53L217.95,133.36L218.87,131.58L221.11,130.85L223.31,143.22L221.08,143.15L217.22,143.02L212.59,142.86L206.05,142.64L198.91,142.41Z" fill="#55739D"/>
+<path d="M193.00,142.26L196.00,142.34L198.91,142.41L206.05,142.64L212.59,142.86L217.22,143.02L221.08,143.15L223.31,143.22L224.87,151.89L225.13,153.39L222.71,153.38L219.29,153.39L207.03,153.43L197.27,153.45L193.00,142.26Z" fill="#24477A"/>
+<path d="M242.59,148.19L255.85,148.10L276.52,147.98L275.63,152.13L275.10,154.11L274.58,155.48L273.23,159.02L271.73,161.10L270.34,162.62L268.74,164.36L253.69,166.11L249.57,166.36L244.58,171.63L244.03,164.81L242.59,148.19Z" fill="#55739D"/>
+<path d="M233.68,151.82L238.03,151.75L238.53,148.47L242.59,148.19L244.03,164.81L244.58,171.63L242.64,174.16L240.37,177.13L239.15,179.12L238.09,179.82L235.45,181.68L231.75,183.36L230.61,183.81L225.13,153.39L224.87,151.89L230.12,151.85L233.68,151.82Z" fill="#24477A"/>
+<path d="M356.63,153.89L366.94,152.16L377.53,150.39L381.32,149.77L381.82,154.33L378.61,155.19L378.97,159.39L378.82,163.38L378.77,167.16L378.79,168.23L378.96,175.14L361.28,178.20L361.22,168.37L356.59,166.94L356.62,158.82L356.63,153.89Z" fill="#8AA1BF"/>
+<path d="M219.29,153.39L222.71,153.38L225.13,153.39L230.61,183.81L228.88,184.26L228.11,184.26L225.86,184.26L224.40,184.13L222.88,183.72L219.85,182.96L217.54,181.30L216.48,180.55L214.94,179.06L214.12,177.81L218.78,177.61L219.29,153.39Z" fill="#55739D"/>
+<path d="M197.27,153.45L207.03,153.43L219.29,153.39L218.78,177.61L214.12,177.81L213.55,175.23L213.37,174.41L213.44,170.56L212.23,170.56L210.31,170.34L210.02,167.30L209.91,166.11L209.67,163.57L204.47,163.57L199.12,163.57L198.41,159.44L198.41,157.02L197.27,153.45Z" fill="#24477A"/>
+<path d="M332.30,157.96L343.92,156.01L356.63,153.89L356.62,158.82L356.59,166.94L361.22,168.37L361.28,178.20L361.46,210.27L361.55,228.01L349.23,227.94L335.23,227.87L334.76,226.51L334.74,225.37L334.71,222.24L334.68,219.67L334.20,215.82L332.92,212.29L331.71,208.91L330.62,207.35L328.08,203.70L325.12,199.45L324.06,197.93L323.56,197.20L322.95,195.94L331.28,197.44L328.79,185.25L319.86,187.15L326.61,173.81L327.00,173.07L326.45,166.85L332.30,157.96Z" fill="#E6EBF1"/>
+<path d="M177.31,180.67L197.90,182.95L198.31,184.74L198.66,186.32L199.13,188.30L199.80,189.54L200.99,191.74L202.14,192.65L204.62,194.85L206.40,195.73L210.68,198.41L211.81,198.67L214.14,199.19L217.70,199.99L219.52,199.67L222.19,199.21L223.86,199.77L224.60,200.46L225.58,201.38L226.97,203.27L227.38,204.35L228.75,207.90L226.06,214.97L225.47,215.68L222.19,219.32L221.07,220.47L217.97,223.34L217.39,223.83L216.11,224.90L215.20,225.71L208.71,227.85L206.86,221.86L195.96,224.93L197.17,233.12L169.52,243.31L166.32,233.62L168.38,228.06L158.63,218.01L162.69,215.52L161.20,205.47L146.02,203.83L146.09,197.84L140.32,194.49L131.21,188.50L126.86,183.94L124.94,180.59L123.80,173.04L121.60,157.86L127.44,157.93L128.30,161.50L129.58,166.91L131.93,170.76L136.49,173.18L141.62,174.89L147.88,176.32L150.02,176.54L151.59,181.81L152.80,180.81L154.08,180.38L156.36,180.17L157.15,180.03L157.07,184.16L157.86,185.73L161.20,188.29L164.98,186.23L168.69,187.65L167.76,183.73L162.85,181.81L163.35,178.89L177.31,180.67Z" fill="#55739D"/>
+<path d="M287.40,167.08L293.50,167.11L299.52,167.15L311.49,167.15L314.34,161.59L332.30,157.96L326.45,166.85L327.00,173.07L326.61,173.81L319.86,187.15L306.73,190.06L293.31,192.87L288.03,193.44L287.44,184.83L287.39,183.81L287.04,177.12L285.41,176.62L285.48,169.28L287.40,167.08Z" fill="#8AA1BF"/>
+<path d="M378.82,163.38L386.59,163.10L394.50,163.67L394.57,174.50L394.28,184.69L394.27,195.81L393.70,206.92L376.91,208.67L361.46,210.27L361.28,178.20L378.96,175.14L378.79,168.23L378.77,167.16L378.82,163.38Z" fill="#BCC9DA"/>
+<path d="M199.12,163.57L204.47,163.57L209.67,163.57L209.91,166.11L210.02,167.30L210.31,170.34L212.23,170.56L213.44,170.56L213.37,174.41L213.55,175.23L214.12,177.81L214.94,179.06L216.48,180.55L217.54,181.30L219.85,182.96L222.88,183.72L224.40,184.13L225.86,184.26L228.11,184.26L228.88,184.26L230.61,183.81L231.75,183.36L235.45,181.68L238.09,179.82L239.15,179.12L239.11,181.75L239.07,184.60L239.01,188.02L243.29,188.52L242.65,193.15L244.50,194.86L244.92,200.63L234.47,202.32L226.97,203.27L225.58,201.38L224.60,200.46L223.86,199.77L222.19,199.21L219.52,199.67L217.70,199.99L214.14,199.19L211.81,198.67L210.68,198.41L206.40,195.73L204.62,194.85L202.14,192.65L200.99,191.74L199.80,189.54L199.13,188.30L198.66,186.32L198.31,184.74L197.90,182.95L198.33,179.89L199.19,176.61L199.97,171.91L199.62,168.28L199.05,165.42L199.12,163.57Z" fill="#8AA1BF"/>
+<path d="M244.58,171.63L249.57,166.36L253.69,166.11L268.74,164.36L268.79,167.72L268.94,178.11L269.11,189.30L269.22,196.61L268.15,196.79L256.68,198.69L244.92,200.63L244.50,194.86L242.65,193.15L243.29,188.52L239.01,188.02L239.07,184.60L239.11,181.75L239.15,179.12L240.37,177.13L242.64,174.16L244.58,171.63Z" fill="#24477A"/>
+<path d="M268.74,164.36L278.28,164.62L287.19,164.87L287.40,167.08L285.48,169.28L285.41,176.62L287.04,177.12L287.39,183.81L287.44,184.83L288.03,193.44L278.30,195.08L269.22,196.61L269.11,189.30L268.94,178.11L268.79,167.72L268.74,164.36Z" fill="#55739D"/>
+<path d="M293.31,192.87L306.73,190.06L319.86,187.15L328.79,185.25L331.28,197.44L322.95,195.94L323.56,197.20L324.06,197.93L325.12,199.45L328.08,203.70L330.62,207.35L331.71,208.91L313.75,209.25L294.16,209.40L294.25,204.91L294.00,198.06L293.31,192.87Z" fill="#55739D"/>
+<path d="M288.03,193.44L293.31,192.87L294.00,198.06L294.25,204.91L294.16,209.40L294.28,211.33L294.69,218.06L294.79,219.59L295.00,227.29L284.39,228.50L274.17,226.21L265.93,224.37L266.30,218.59L266.55,214.53L266.87,207.76L267.01,205.07L267.26,200.44L268.08,198.28L269.22,196.61L278.30,195.08L288.03,193.44Z" fill="#24477A"/>
+<path d="M268.15,196.79L269.22,196.61L268.08,198.28L267.26,200.44L267.01,205.07L266.87,207.76L266.55,214.53L266.30,218.59L265.93,224.37L252.61,223.69L250.48,208.62L246.42,207.40L246.58,204.84L246.70,202.98L244.92,202.06L244.92,200.63L256.68,198.69L268.15,196.79Z" fill="#24477A"/>
+<path d="M234.47,202.32L244.92,200.63L244.92,202.06L246.70,202.98L246.58,204.84L246.42,207.40L250.48,208.62L252.61,223.69L247.69,223.52L239.43,223.15L232.66,223.51L224.82,223.22L216.11,224.90L217.39,223.83L217.97,223.34L221.07,220.47L222.19,219.32L225.47,215.68L226.06,214.97L228.75,207.90L227.38,204.35L226.97,203.27L234.47,202.32Z" fill="#24477A"/>
+<path d="M100.34,210.95L113.10,205.60L117.52,204.82L122.79,204.11L126.14,203.97L130.48,220.42L118.15,222.00L98.77,223.92L78.46,225.20L94.00,214.51L100.34,210.95Z" fill="#E6EBF1"/>
+<path d="M361.46,210.27L376.91,208.67L393.70,206.92L394.41,213.41L396.47,213.76L397.69,213.98L399.89,213.84L401.32,214.12L402.17,214.05L405.73,220.04L410.58,226.59L417.13,235.36L411.57,235.71L407.80,234.00L400.67,233.72L399.10,229.01L393.83,229.34L388.70,229.65L387.07,229.60L385.84,229.57L379.51,229.37L378.01,229.37L374.95,229.34L371.17,229.30L369.11,227.87L361.55,228.01L361.46,210.27Z" fill="#BCC9DA"/>
+<path d="M294.16,209.40L313.75,209.25L331.71,208.91L332.92,212.29L334.20,215.82L334.68,219.67L334.71,222.24L334.74,225.37L334.76,226.51L333.08,224.74L330.21,223.66L329.30,223.22L325.86,222.16L322.43,220.71L321.15,220.18L319.20,219.67L316.95,219.10L305.48,219.35L294.79,219.59L294.69,218.06L294.28,211.33L294.16,209.40Z" fill="#55739D"/>
+<path d="M130.48,220.42L139.89,219.86L153.50,218.72L151.79,221.14L150.29,223.21L150.71,226.92L152.42,228.98L152.35,236.75L166.32,233.62L169.52,243.31L167.88,246.52L165.31,249.08L161.75,250.86L157.33,253.21L150.63,255.99L145.64,257.39L144.01,247.30L139.74,239.10L126.06,243.07L116.15,245.94L115.22,235.74L114.87,231.90L118.65,231.33L118.15,222.00L130.48,220.42Z" fill="#BCC9DA"/>
+<path d="M294.79,219.59L305.48,219.35L316.95,219.10L319.20,219.67L321.15,220.18L322.43,220.71L325.86,222.16L329.30,223.22L330.21,223.66L333.08,224.74L334.76,226.51L335.23,227.87L325.29,228.29L325.35,243.04L295.57,242.27L284.24,241.97L284.39,228.50L295.00,227.29L294.79,219.59Z" fill="#55739D"/>
+<path d="M98.77,223.92L118.15,222.00L118.65,231.33L114.87,231.90L115.22,235.74L116.15,245.94L109.48,246.73L101.38,247.69L99.99,247.95L94.27,249.00L89.43,249.20L85.72,249.39L80.24,249.57L78.46,225.20L98.77,223.92Z" fill="#E6EBF1"/>
+<path d="M239.43,223.15L247.69,223.52L252.61,223.69L265.93,224.37L266.00,235.34L266.71,241.04L265.78,248.38L259.93,248.26L255.31,248.09L254.38,249.95L243.62,248.81L239.43,223.15Z" fill="#55739D"/>
+<path d="M265.93,224.37L274.17,226.21L284.39,228.50L284.24,241.97L274.69,241.46L266.71,241.04L266.00,235.34L265.93,224.37Z" fill="#24477A"/>
+<path d="M58.86,241.44L74.04,230.26L78.46,225.20L80.24,249.57L69.90,250.92L69.86,252.70L69.83,253.77L71.33,255.98L71.54,261.40L68.47,264.32L57.86,264.46L58.69,267.97L58.78,268.96L61.06,272.21L61.63,273.79L61.63,276.86L52.22,273.94L52.22,271.44L51.94,270.30L52.01,269.45L48.45,266.45L44.81,266.38L42.25,263.82L43.75,262.11L43.82,258.26L36.98,258.54L58.86,241.44Z" fill="#BCC9DA"/>
+<path d="M335.23,227.87L349.23,227.94L361.55,228.01L369.11,227.87L371.17,229.30L374.95,229.34L378.01,229.37L379.51,229.37L385.84,229.57L387.07,229.60L388.70,229.65L388.41,232.79L388.48,233.74L388.69,236.64L388.84,238.78L388.87,239.94L388.61,241.06L388.20,242.77L388.41,249.96L388.40,264.36L383.56,264.64L380.21,265.07L374.93,265.50L373.65,265.71L370.80,265.21L365.46,265.14L361.25,264.36L357.19,262.79L355.70,261.50L354.70,257.51L354.06,254.59L351.14,252.17L347.37,248.39L343.24,243.62L339.03,238.84L336.26,233.00L335.23,227.87Z" fill="#E6EBF1"/>
+<path d="M388.70,229.65L393.83,229.34L399.10,229.01L400.67,233.72L407.80,234.00L411.57,235.71L411.57,238.42L412.42,240.28L412.49,243.05L412.64,244.84L411.28,245.76L411.28,256.95L411.24,258.39L409.54,259.30L408.15,259.86L407.41,260.11L403.58,261.37L399.95,262.01L396.81,262.79L395.52,262.94L393.78,263.32L391.16,263.88L389.60,264.15L388.40,264.36L388.41,249.96L388.20,242.77L388.61,241.06L388.87,239.94L388.84,238.78L388.69,236.64L388.48,233.74L388.41,232.79L388.70,229.65Z" fill="#E6EBF1"/>
+<path d="M99.99,247.95L101.38,247.69L109.48,246.73L116.15,245.94L126.06,243.07L139.74,239.10L144.01,247.30L145.64,257.39L146.07,260.05L144.50,267.75L142.86,272.02L140.58,275.80L136.87,281.07L104.95,272.59L108.66,265.82L103.81,264.61L105.17,262.18L100.89,261.97L99.68,260.05L101.96,257.70L101.40,253.78L99.97,252.92L99.99,247.95Z" fill="#E6EBF1"/>
+<path d="M266.71,241.04L274.69,241.46L284.24,241.97L284.02,258.64L274.68,258.80L267.27,258.93L265.78,248.38L266.71,241.04Z" fill="#8AA1BF"/>
+<path d="M284.24,241.97L295.57,242.27L325.35,243.04L328.62,261.79L315.37,262.00L315.22,265.85L306.67,265.77L298.98,265.70L298.84,260.57L287.79,261.28L283.80,261.50L284.02,258.64L284.24,241.97Z" fill="#BCC9DA"/>
+<path d="M259.93,248.26L265.78,248.38L267.27,258.93L267.84,269.69L267.55,271.26L266.92,272.69L266.55,273.54L272.11,274.39L272.30,276.62L272.40,277.46L272.61,280.95L270.33,282.59L269.54,286.79L267.04,288.12L266.69,293.13L249.23,293.63L246.74,290.35L244.89,288.07L243.18,285.29L242.25,282.44L241.90,280.16L242.33,278.38L242.11,276.60L232.92,276.67L233.56,274.53L233.78,271.89L233.64,266.69L235.99,263.34L237.27,262.56L238.27,261.85L236.71,252.01L243.62,248.81L254.38,249.95L255.31,248.09L259.93,248.26Z" fill="#BCC9DA"/>
+<path d="M80.24,249.57L85.72,249.39L89.43,249.20L94.27,249.00L92.20,252.42L92.06,256.34L91.49,258.41L83.15,258.19L83.01,261.68L82.72,264.03L84.57,265.96L85.07,268.03L85.50,273.23L84.00,274.01L84.21,282.49L61.63,276.86L61.63,273.79L61.06,272.21L58.78,268.96L58.69,267.97L57.86,264.46L68.47,264.32L71.54,261.40L71.33,255.98L69.83,253.77L69.86,252.70L69.90,250.92L80.24,249.57Z" fill="#E6EBF1"/>
+<path d="M409.54,259.30L411.24,258.39L411.13,262.01L411.06,266.71L411.34,271.84L412.84,276.90L415.47,279.11L418.32,282.46L420.81,286.45L422.17,288.88L423.02,292.15L422.95,295.86L403.49,296.00L399.93,295.22L394.23,294.65L386.96,294.29L381.76,293.79L380.69,292.79L377.49,288.73L375.14,286.23L373.15,282.46L373.43,281.32L380.49,270.91L380.21,265.07L383.56,264.64L388.40,264.36L389.60,264.15L391.16,263.88L393.78,263.32L395.52,262.94L396.81,262.79L399.95,262.01L403.58,261.37L407.41,260.11L408.15,259.86L409.54,259.30Z" fill="#BCC9DA"/>
+<path d="M274.68,258.80L284.02,258.64L283.80,261.50L287.79,261.28L287.90,262.18L287.92,262.99L288.04,269.12L288.01,270.97L287.93,277.17L280.01,277.50L272.40,277.46L272.30,276.62L272.11,274.39L266.55,273.54L266.92,272.69L267.55,271.26L267.84,269.69L267.27,258.93L274.68,258.80Z" fill="#BCC9DA"/>
+<path d="M287.79,261.28L298.84,260.57L298.98,265.70L306.67,265.77L315.22,265.85L315.43,272.47L315.15,280.38L315.22,286.01L315.64,291.36L266.69,293.13L267.04,288.12L269.54,286.79L270.33,282.59L272.61,280.95L272.40,277.46L280.01,277.50L287.93,277.17L288.01,270.97L288.04,269.12L287.92,262.99L287.90,262.18L287.79,261.28Z" fill="#BCC9DA"/>
+</svg>
+</div>
+<div class="legend">
+<strong class="en">Residential burglaries and vehicle thefts per 1,000 households</strong><strong class="id">Pencurian rumah dan kendaraan per 1.000 rumah tangga</strong>
+<div class="ramp" aria-hidden="true"></div>
+<div class="breaks"><span style="--stop:0"><span class="en">0.2</span><span class="id">0,2</span></span><span style="--stop:1"><span class="en">19.0</span><span class="id">19,0</span></span><span style="--stop:2"><span class="en">29.3</span><span class="id">29,3</span></span><span style="--stop:3"><span class="en">39.0</span><span class="id">39,0</span></span><span style="--stop:4"><span class="en">53.2</span><span class="id">53,2</span></span><span style="--stop:5"><span class="en">68.9</span><span class="id">68,9</span></span></div>
+</div>
+</figure>
+<ol class="findings">
+<li>
+<p class="range">0–30</p>
+<h2><span class="en">Neighbourhoods with significant LISA after 5% FDR</span><span class="id">Wilayah dengan LISA signifikan setelah FDR 5%</span></h2>
+<p><span class="en">Range across 32 matrices. The count joins High-High and Low-Low clusters with High-Low and Low-High outliers; High-High alone ranges from 0 to 22. The Queen · W reference gives 4, all High-High.</span><span class="id">Rentang dari 32 matriks. Hitungan ini menggabungkan klaster Tinggi-Tinggi dan Rendah-Rendah dengan pencilan Tinggi-Rendah dan Rendah-Tinggi; Tinggi-Tinggi saja berkisar 0 sampai 22. Acuan Queen · W memberi 4, semuanya Tinggi-Tinggi.</span></p>
+</li>
+<li class="go"><a href="dashboard_html/index.html" id="goDash2"><span class="en">Open the two maps side by side</span><span class="id">Buka dua peta berdampingan</span></a><a href="reports/Columbus_Spatial_Analysis.html#local" id="goLocal"><span class="en">Read the chapter on local clusters</span><span class="id">Baca bab klaster lokal</span></a></li>
+</ol>
+</section>
 </main>
-<footer><div class="wrap">
-<p><span class="en">Data: Anselin (1988), Table 12.1, via the GeoDa Center Columbus shapefile. Computed in R with spdep and sf.</span><span class="id">Data: Anselin (1988), Tabel 12.1, melalui shapefile Columbus dari GeoDa Center. Dihitung di R dengan spdep dan sf.</span></p>
-<p>Febrianggi Caesar Immanuel, Universitas Padjadjaran.</p>
-</div></footer>
+<footer class="wrap"><span class="en">Data: Anselin (1988), Table 12.1, via GeoDa/SAL. Illustration made for this site.</span><span class="id">Data: Anselin (1988), Tabel 12.1, melalui GeoDa/SAL. Ilustrasi dibuat untuk situs ini.</span></footer>
 <script>
 (function () {
   "use strict";
@@ -66,12 +177,16 @@ footer p{margin:0 0 6px}
   function setLang(l, save) {
     l = l === "id" ? "id" : "en";
     root.setAttribute("data-lang", l); root.setAttribute("lang", l);
-    document.title = l === "id" ? "Ketika definisi tetangga mengubah realitas spasial" : "When the definition of neighbour changes spatial reality";
+    document.title = l === "id" ? "Pencurian rumah dan kendaraan di Columbus, 1980" : "Residential burglaries and vehicle thefts in Columbus, 1980";
+    document.getElementById("crime-map-desc").textContent = l === "id" ? "Tingkat pencurian tertinggi terkonsentrasi di banyak wilayah pusat kota." : "Crime rates are highest in many of the central neighbourhoods.";
     var bs = document.querySelectorAll(".lang button");
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute("aria-pressed", String(bs[i].getAttribute("data-lang") === l));
     var q = "?lang=" + l;
     document.getElementById("goReport").setAttribute("href", "reports/Columbus_Spatial_Analysis.html" + q);
     document.getElementById("goDash").setAttribute("href", "dashboard_html/index.html" + q);
+    document.getElementById("reportHome").setAttribute("href", "reports/Columbus_Spatial_Analysis.html" + q);
+    document.getElementById("goDash2").setAttribute("href", "dashboard_html/index.html" + q);
+    document.getElementById("goLocal").setAttribute("href", "reports/Columbus_Spatial_Analysis.html" + q + "#local");
     if (save) { try { localStorage.setItem("columbus-lang", l); } catch (e) { /* storage blocked: keep the choice for this page only */ } }
   }
   setLang(new URLSearchParams(location.search).get("lang") || stored() || "en", false);

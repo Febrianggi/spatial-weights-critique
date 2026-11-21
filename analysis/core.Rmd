@@ -18,13 +18,11 @@ REF   <- "queen_W"   # spesifikasi acuan
 OUT <- "output"
 for (d in file.path(OUT, c("csv", "png", "rds", "json"))) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 save_csv <- function(df, name) write.csv(df, file.path(OUT, "csv", paste0(name, ".csv")), row.names = FALSE)
-save_png <- function(p, name, w = 9, h = 5.5) ggsave(file.path(OUT, "png", paste0(name, ".png")), p, width = w, height = h, dpi = 150, bg = "white")
+save_png <- function(p, name, w = 9, h = 5.5) ggsave(file.path(OUT, "png", paste0(name, ".png")), p, width = w, height = h, dpi = 150, bg = ARC$field)
 
-theme_set(theme_minimal(base_size = 11) +
-          theme(panel.grid.minor = element_blank(), plot.title.position = "plot",
-                plot.title = element_text(face = "bold")))
-COL_CONC <- c("Positif" = "#c0392b", "Negatif" = "#2471a3", "Tidak signifikan" = "#bfc5cc")
-COL_LISA <- c("HH" = "#d7191c", "LL" = "#2c7bb6", "HL" = "#fdae61", "LH" = "#abd9e9", "NS" = "#ececec")
+# one palette for every figure (also used by the report and the dashboard): analysis/style.R
+source("analysis/style.R")
+theme_set(theme_archive(11))
 kt <- function(df, digits = 4, ...) kable(df, digits = digits, format.args = list(big.mark = ""), ...)
 cat("R", R.version.string, "| sf", as.character(packageVersion("sf")),
     "| spdep", as.character(packageVersion("spdep")), "| spData", as.character(packageVersion("spData")), "\n")
@@ -34,7 +32,9 @@ cat("R", R.version.string, "| sf", as.character(packageVersion("sf")),
 geoda_shp <- "data/geoda_sal/columbus.shp"
 stopifnot(file.exists(geoda_shp))
 col <- st_read(geoda_shp, quiet = TRUE) |> arrange(POLYID)
-col_spdata <- st_read(system.file("shapes/columbus.shp", package = "spData"), quiet = TRUE) |> arrange(POLYID)
+spdata_shp <- system.file("shapes/columbus.shp", package = "spData")
+if (!nzchar(spdata_shp)) spdata_shp <- system.file("shapes/columbus.gpkg", package = "spData")
+col_spdata <- st_read(spdata_shp, quiet = TRUE) |> arrange(POLYID)
 data_source <- "GeoDa/SAL columbus (data/geoda_sal; identik dengan spData::columbus.shp, lihat Bagian 3.2)"
 data_source
 ```
@@ -107,6 +107,9 @@ desc <- lapply(VARS, function(v) {
 var_desc <- c(HOVAL = "Nilai rumah (US$1.000)", INC = "Pendapatan rumah tangga (US$1.000)",
               CRIME = "Pencurian rumah & kendaraan per 1.000 RT", OPEN = "Luas ruang terbuka",
               PLUMB = "% unit rumah tanpa plumbing", DISCBD = "Jarak ke CBD")
+# legend unit per variable; OPEN and DISCBD have no unit in the source documentation (spData::columbus)
+var_unit <- c(HOVAL = "US$1.000", INC = "US$1.000", CRIME = "per 1.000 RT", OPEN = "satuan tidak\ndicatat sumber",
+              PLUMB = "% unit", DISCBD = "satuan tidak\ndicatat sumber")
 kt(desc, 3)
 save_csv(desc, "03_statistik_deskriptif")
 ```
@@ -114,19 +117,19 @@ save_csv(desc, "03_statistik_deskriptif")
 ```{r choropleth, fig.height = 7.5}
 long <- col |> select(POLYID, all_of(VARS)) |> pivot_longer(all_of(VARS), names_to = "var")
 maps <- lapply(VARS, function(v) {
-  ggplot(filter(long, var == v)) + geom_sf(aes(fill = value), colour = "white", linewidth = .25) +
-    scale_fill_distiller(palette = "YlGnBu", direction = 1, name = NULL) +
-    labs(title = v, subtitle = var_desc[[v]]) + theme_void(base_size = 10) +
-    theme(plot.title = element_text(face = "bold"), legend.key.width = unit(.35, "cm"))
+  ggplot(filter(long, var == v)) + geom_sf(aes(fill = value), colour = ARC$ns_line, linewidth = .25) +
+    scale_fill_gradientn(colours = RAMP_VAL, name = var_unit[[v]]) +
+    labs(title = v, subtitle = var_desc[[v]]) + theme_archive_map(10) +
+    theme(legend.position = "right", legend.key.width = unit(.35, "cm"), legend.title = element_text(size = 8))
 })
-p_choro <- wrap_plots(maps, ncol = 3)
+p_choro <- wrap_plots(maps, ncol = 3) + plot_annotation(theme = theme(plot.background = element_rect(fill = ARC$field, colour = NA)))
 p_choro; save_png(p_choro, "01_choropleth_6_variabel", 11, 7.5)
 ```
 
 ```{r distributions, fig.height = 4.2}
 p_dist <- ggplot(st_drop_geometry(long), aes(value)) +
-  geom_histogram(bins = 15, fill = "#5d7f99", colour = "white") +
-  geom_rug(alpha = .5) + facet_wrap(~var, scales = "free", nrow = 1) +
+  geom_histogram(bins = 15, fill = RAMP_VAL[4], colour = ARC$field) +
+  geom_rug(alpha = .5, colour = ARC$ink) + facet_wrap(~var, scales = "free", nrow = 1) +
   labs(title = "Distribusi enam variabel", x = NULL, y = "Frekuensi")
 p_dist; save_png(p_dist, "02_histogram_6_variabel", 13, 3.6)
 ```
@@ -253,14 +256,14 @@ edges_of <- function(id) {
 }
 show_ids <- c("queen_B", "rook_B", "knn2_B", "knn6_B", "band062_B", "band110_B")
 p_graph <- wrap_plots(lapply(show_ids, function(id) {
-  ggplot() + geom_sf(data = col, fill = "#f3f4f6", colour = "white", linewidth = .3) +
-    geom_segment(data = edges_of(id), aes(x, y, xend = xend, yend = yend), colour = "#2c5f8a", linewidth = .25, alpha = .7) +
-    geom_point(data = as.data.frame(cc), aes(X, Y), size = .6) +
+  ggplot() + geom_sf(data = col, fill = ARC$ns, colour = ARC$ns_line, linewidth = .3) +
+    geom_segment(data = edges_of(id), aes(x, y, xend = xend, yend = yend), colour = ARC$moran, linewidth = .25, alpha = .75) +
+    geom_point(data = as.data.frame(cc), aes(X, Y), size = .6, colour = ARC$ink) +
     labs(title = specs$label[specs$id == id],
          subtitle = sprintf("%d link · rata-rata %.2f tetangga", specs$`Total link`[specs$id == id],
                             specs$`Rata-rata tetangga`[specs$id == id])) +
-    theme_void(base_size = 10) + theme(plot.title = element_text(face = "bold"))
-}), ncol = 3)
+    theme_archive_map(10)
+}), ncol = 3) + plot_annotation(theme = theme(plot.background = element_rect(fill = ARC$field, colour = NA)))
 p_graph; save_png(p_graph, "03_graf_ketetanggaan", 11, 7.5)
 ```
 
@@ -268,10 +271,10 @@ p_graph; save_png(p_graph, "03_graf_ketetanggaan", 11, 7.5)
 cnt <- bind_rows(
   filter(specs, family == "KNN", style == "B") |> transmute(panel = "KNN (k)", param, v = `Rata-rata tetangga`, mx = `Maks tetangga`),
   filter(specs, family == "Distance band", style == "B") |> transmute(panel = "Pita jarak (d*, satuan peta)", param, v = `Rata-rata tetangga`, mx = `Maks tetangga`))
-p_cnt <- ggplot(cnt, aes(param)) + geom_line(aes(y = v), colour = "#2c5f8a") + geom_point(aes(y = v), colour = "#2c5f8a") +
-  geom_line(aes(y = mx), linetype = 2, colour = "grey50") + facet_wrap(~panel, scales = "free_x") +
-  geom_hline(yintercept = mean(card(LW$queen_B$neighbours)), colour = "#c0392b", linewidth = .4) +
-  labs(title = "Kepadatan ketetanggaan", subtitle = "Garis penuh: rata-rata tetangga · putus-putus: maksimum · merah: Queen",
+p_cnt <- ggplot(cnt, aes(param)) + geom_line(aes(y = v), colour = ARC$moran) + geom_point(aes(y = v), colour = ARC$moran) +
+  geom_line(aes(y = mx), linetype = 2, colour = ARC$faint) + geom_point(aes(y = mx), shape = 2, colour = ARC$faint) + facet_wrap(~panel, scales = "free_x") +
+  geom_hline(yintercept = mean(card(LW$queen_B$neighbours)), colour = ARC$maroon, linewidth = .4, linetype = 3) +
+  labs(title = "Kepadatan ketetanggaan", subtitle = "Garis penuh, titik: rata-rata tetangga · putus-putus, segitiga: maksimum · titik-titik marun: rata-rata Queen",
        x = NULL, y = "Jumlah tetangga")
 p_cnt; save_png(p_cnt, "04_kepadatan_ketetanggaan", 9, 4)
 ```
@@ -283,9 +286,10 @@ mdf <- bind_rows(lapply(mat_ids, function(id) {
   data.frame(id = specs$label[specs$id == id], i = rep(1:49, 49), j = rep(1:49, each = 49), w = as.vector(M))
 }))
 p_mat <- ggplot(mdf, aes(j, i, fill = w)) + geom_raster() + scale_y_reverse() +
-  scale_fill_gradient(low = "white", high = "#1f3b57", name = "w / maks(w)") +
+  scale_fill_gradientn(colours = SEQ_RAMP, name = "w / maks(w)") +
   facet_wrap(~factor(id, unique(id)), ncol = 3) + coord_equal() +
-  labs(title = "Visualisasi matriks bobot (baris i, kolom j; urut POLYID)", x = "j", y = "i")
+  labs(title = "Visualisasi matriks bobot (baris i, kolom j; urut POLYID)", x = "j", y = "i") +
+  theme(legend.key.width = unit(1.4, "cm"))
 p_mat; save_png(p_mat, "05_matriks_bobot_heatmap", 11, 7.5)
 ```
 
@@ -351,11 +355,11 @@ kt(gw)
 
 ```{r global-plot, fig.height = 8}
 p_glob <- ggplot(glob, aes(z_perm, reorder(label, -order), colour = conclusion, shape = index)) +
-  geom_vline(xintercept = c(-1.96, 1.96), linetype = 3, colour = "grey60") + geom_vline(xintercept = 0, colour = "grey40") +
+  annotate("rect", xmin = -1.96, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = ARC$band) + geom_vline(xintercept = 0, colour = ARC$faint) +
   geom_point(size = 2, position = position_dodge(width = .6)) +
-  facet_wrap(~var, nrow = 1) + scale_colour_manual(values = COL_CONC) +
+  facet_wrap(~var, nrow = 1) + scale_colour_manual(values = COL_CONC) + scale_shape_manual(values = SHP_IDX) +
   labs(title = "Skor-z permutasi berorientasi untuk 32 matriks bobot",
-       subtitle = "z > 0 = autokorelasi positif untuk kedua indeks; garis titik = ±1,96",
+       subtitle = "z > 0 = autokorelasi positif untuk kedua indeks; pita abu-abu = |z| < 1,96 · titik: Moran, segitiga: Geary",
        x = "z permutasi", y = NULL, colour = "Kesimpulan (α = 0,05)", shape = NULL) +
   theme(legend.position = "bottom")
 p_glob; save_png(p_glob, "06_global_z_semua_spesifikasi", 14, 8)
@@ -443,12 +447,12 @@ save_csv(sens_num, "06_sensitivitas_numerik")
 ```{r sens-num-curves, fig.height = 7}
 curve_df <- glob |> filter(family %in% c("KNN", "Distance band"))
 p_curve_es <- ggplot(curve_df, aes(param, es, colour = index, linetype = style)) +
-  geom_hline(yintercept = 0, colour = "grey50") + geom_line() + geom_point(size = 1.6) +
+  geom_hline(yintercept = 0, colour = ARC$faint) + geom_line() + geom_point(aes(shape = index), size = 1.6) +
   facet_grid(var ~ family, scales = "free") +
-  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
+  scale_colour_manual(values = COL_IDX) + scale_shape_manual(values = SHP_IDX) +
   labs(title = "Kurva sensitivitas numerik: ukuran efek terhadap k dan ambang jarak d*",
        subtitle = "ES = I − E(I) untuk Moran, 1 − C untuk Geary · linetype: B = biner, W = row-standardized",
-       x = "k (KNN) / d* (satuan peta)", y = "Ukuran efek (berorientasi)", colour = NULL, linetype = "Skema")
+       x = "k (KNN) / d* (satuan peta)", y = "Ukuran efek (berorientasi)", colour = NULL, shape = NULL, linetype = "Skema")
 p_curve_es; save_png(p_curve_es, "08_kurva_sensitivitas_ukuran_efek", 11, 12)
 ```
 
@@ -469,15 +473,20 @@ save_csv(sens_fam, "07b_sensitivitas_per_keluarga")
 ```
 
 ```{r sens-curves, fig.height = 7}
-p_curve <- ggplot(curve_df, aes(param, z_perm, colour = index, linetype = style)) +
-  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -1.96, ymax = 1.96, alpha = .12, fill = "grey50") +
-  geom_line() + geom_point(aes(shape = conclusion), size = 2) +
+p_curve <- ggplot(curve_df |> mutate(sh = paste(index, ifelse(signif, "sig", "ns"))),
+                  aes(param, z_perm, colour = index, linetype = style)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -1.96, ymax = 1.96, fill = ARC$band) +
+  geom_line() + geom_point(aes(shape = sh), size = 2, stroke = .9) +
   facet_grid(var ~ family, scales = "free") +
-  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
-  scale_shape_manual(values = c("Positif" = 16, "Negatif" = 17, "Tidak signifikan" = 1)) +
+  scale_colour_manual(values = COL_IDX) +
+  scale_shape_manual(values = c("Moran's I sig" = 16, "Moran's I ns" = 1, "Geary's C sig" = 17, "Geary's C ns" = 2),
+                     breaks = c("Moran's I sig", "Moran's I ns", "Geary's C sig", "Geary's C ns"),
+                     labels = c("Moran's I sig" = "Moran, sig.", "Moran's I ns" = "Moran, tidak sig.",
+                                "Geary's C sig" = "Geary, sig.", "Geary's C ns" = "Geary, tidak sig.")) +
   labs(title = "Kurva sensitivitas inferensial: z permutasi terhadap k dan ambang jarak d*",
-       subtitle = "Pita abu-abu = |z| < 1,96 · linetype: B = biner, W = row-standardized",
-       x = "k (KNN) / d* (satuan peta)", y = "z permutasi (berorientasi)", colour = NULL, shape = "Kesimpulan", linetype = "Skema")
+       subtitle = "Pita abu-abu = |z| < 1,96 · lingkaran: Moran, segitiga: Geary (kosong = tidak sig.) · B = biner, W = standardisasi baris",
+       x = "k (KNN) / d* (satuan peta)", y = "z permutasi (berorientasi)", colour = NULL, shape = NULL, linetype = "Skema") +
+  guides(shape = guide_legend(nrow = 2, override.aes = list(colour = unname(COL_IDX[c(1, 1, 2, 2)]))))
 p_curve; save_png(p_curve, "07_kurva_sensitivitas_z", 11, 12)
 ```
 
@@ -517,8 +526,6 @@ agree <- glob |> select(spec_id, label, order, family, var, index, conclusion, z
     M != "Tidak signifikan" & G == "Tidak signifikan" ~ "Hanya Moran signifikan",
     M == "Tidak signifikan" & G != "Tidak signifikan" ~ "Hanya Geary signifikan",
     TRUE ~ "Arah berlawanan"))
-COL_AGREE <- c("Sepakat: positif" = "#c0392b", "Sepakat: negatif" = "#2471a3", "Sepakat: tidak signifikan" = "#d5d8dc",
-               "Hanya Moran signifikan" = "#1f3b57", "Hanya Geary signifikan" = "#e67e22", "Arah berlawanan" = "#7d3c98")
 agree_rate <- agree |> group_by(var) |> summarise(`Kesepakatan (%)` = 100 * mean(M == G),
   `Hanya Moran sig.` = sum(kategori == "Hanya Moran signifikan"), `Hanya Geary sig.` = sum(kategori == "Hanya Geary signifikan"),
   `Arah berlawanan` = sum(kategori == "Arah berlawanan"), .groups = "drop")
@@ -527,10 +534,10 @@ save_csv(agree, "11_kesepakatan_moran_geary"); save_csv(agree_rate, "12_kesepaka
 ```
 
 ```{r agreement-heatmap, fig.height = 8}
-p_agree <- ggplot(agree, aes(var, reorder(label, -order), fill = kategori)) + geom_tile(colour = "white") +
+p_agree <- ggplot(agree, aes(var, reorder(label, -order), fill = factor(kategori, names(COL_AGREE)))) + geom_tile(colour = ARC$field, show.legend = TRUE) +
   scale_fill_manual(values = COL_AGREE, drop = FALSE) +
   labs(title = "Agreement heatmap: kesimpulan Moran's I vs Geary's C (α = 0,05)", x = NULL, y = NULL, fill = NULL) +
-  theme(panel.grid = element_blank())
+  theme(panel.grid = element_blank()) + guides(fill = guide_legend(nrow = 2))
 p_agree; save_png(p_agree, "09_agreement_heatmap", 9, 9)
 ```
 
@@ -543,11 +550,15 @@ if (nrow(disagree)) kt(disagree, 4) else cat("Tidak ada kasus ketidaksepakatan.\
 ```
 
 ```{r z-scatter, fig.height = 5}
-p_zz <- ggplot(agree, aes(`z_perm_Moran's I`, `z_perm_Geary's C`, colour = kategori)) +
-  geom_hline(yintercept = c(-1.96, 1.96), linetype = 3) + geom_vline(xintercept = c(-1.96, 1.96), linetype = 3) +
-  geom_abline(colour = "grey60") + geom_point(size = 2, alpha = .85) + facet_wrap(~var, nrow = 2) +
-  scale_colour_manual(values = COL_AGREE) +
-  labs(title = "z Moran vs z Geary pada 32 spesifikasi", x = "z Moran's I", y = "z Geary's C (berorientasi)", colour = NULL)
+col_agree_pt <- replace(COL_AGREE, "Sepakat: tidak signifikan", ARC$faint)
+p_zz <- ggplot(agree |> mutate(kat = factor(kategori, names(COL_AGREE))),
+               aes(`z_perm_Moran's I`, `z_perm_Geary's C`, colour = kat, shape = kat)) +
+  annotate("rect", xmin = -1.96, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = ARC$band) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -1.96, ymax = 1.96, fill = ARC$band) +
+  geom_abline(colour = ARC$faint, linetype = 3) + geom_point(size = 2, alpha = .9, stroke = .9) + facet_wrap(~var, nrow = 2) +
+  scale_colour_manual(values = col_agree_pt) + scale_shape_manual(values = c(16, 15, 1, 17, 2, 4) |> setNames(names(COL_AGREE))) +
+  labs(title = "z Moran vs z Geary pada 32 spesifikasi", subtitle = "Pita abu-abu = |z| < 1,96 · garis titik-titik = z sama",
+       x = "z Moran's I", y = "z Geary's C (berorientasi)", colour = NULL, shape = NULL)
 p_zz; save_png(p_zz, "10_scatter_z_moran_vs_geary", 11, 6)
 ```
 
@@ -581,11 +592,11 @@ save_csv(jk, "13_jackknife_detail"); save_csv(jk_summ, "14_jackknife_ringkasan")
 
 ```{r outlier-jackknife-plot, fig.height = 6}
 p_jk <- ggplot(filter(jk, ref == REF), aes(drop_polyid, dz, colour = index)) +
-  geom_hline(yintercept = 0, colour = "grey50") + geom_segment(aes(xend = drop_polyid, yend = 0), alpha = .5) +
-  geom_point(size = 1.2) + facet_wrap(~var, ncol = 2) +
-  scale_colour_manual(values = c("Moran's I" = "#1f3b57", "Geary's C" = "#d35400")) +
+  geom_hline(yintercept = 0, colour = ARC$faint) + geom_segment(aes(xend = drop_polyid, yend = 0), alpha = .5) +
+  geom_point(aes(shape = index), size = 1.4) + facet_wrap(~var, ncol = 2) +
+  scale_colour_manual(values = COL_IDX) + scale_shape_manual(values = SHP_IDX) +
   labs(title = "Pengaruh penghapusan satu wilayah terhadap z (Queen, row-standardized)",
-       x = "POLYID yang dihapus", y = "Δz = z(−i) − z(penuh)", colour = NULL)
+       x = "POLYID yang dihapus", y = "Δz = z(−i) − z(penuh)", colour = NULL, shape = NULL)
 p_jk; save_png(p_jk, "11_jackknife_influence", 10, 7)
 ```
 
@@ -647,10 +658,10 @@ save_csv(cmp_count, "18_perbandingan_sensitivitas_hitungan")
 ```
 
 ```{r compare-sensitivity-plot, fig.height = 5}
-p_cmp <- ggplot(cmp_tab, aes(var, dimensi, fill = `Lebih sensitif`)) + geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f / %.2f", `Moran's I`, `Geary's C`)), size = 2.6) +
+p_cmp <- ggplot(cmp_tab, aes(var, dimensi, fill = `Lebih sensitif`)) + geom_tile(colour = ARC$field) +
+  geom_text(aes(label = sprintf("%.2f / %.2f", `Moran's I`, `Geary's C`)), size = 2.6, colour = ARC$ink) +
   facet_wrap(~skala, labeller = as_labeller(c(ES = "Skala ES (numerik)", z = "Skala z (inferensial)"))) +
-  scale_fill_manual(values = c("Moran's I" = "#8fa9c4", "Geary's C" = "#eba57a", "Setara" = "#ececec")) +
+  scale_fill_manual(values = c("Moran's I" = "#BCC9DA", "Geary's C" = "#E9C3B6", "Setara" = ARC$ns)) +
   scale_y_discrete(limits = rev(dims)) +
   labs(title = "Indeks yang lebih sensitif per variabel dan dimensi (deskriptif)",
        subtitle = "Angka: ukuran sensitivitas absolut Moran / Geary", x = NULL, y = NULL, fill = NULL) +
@@ -707,11 +718,10 @@ kt(sens_loc, 2); save_csv(sens_loc, "20b_sensitivitas_lokal")
 lisa_map <- function(spec, cls = "class_fdr", title_suffix = "") {
   d <- col |> select(POLYID) |> left_join(filter(lisa, spec_id == spec), by = "POLYID") |>
     mutate(cl = factor(.data[[cls]], names(COL_LISA)))
-  ggplot(d) + geom_sf(aes(fill = cl), colour = "white", linewidth = .25) +
-    scale_fill_manual(values = COL_LISA, drop = FALSE, name = NULL) +
-    facet_wrap(~var, ncol = 3) + theme_void(base_size = 10) +
-    labs(title = paste0("Peta klaster LISA: ", specs$label[specs$id == spec], title_suffix)) +
-    theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
+  ggplot(d) + geom_sf(aes(fill = cl), colour = ARC$ns_line, linewidth = .25, show.legend = TRUE) +
+    scale_fill_manual(values = COL_LISA, labels = LISA_LAB$id, drop = FALSE, name = NULL) +
+    facet_wrap(~var, ncol = 3) + theme_archive_map(10) +
+    labs(title = paste0("Peta LISA (klaster HH/LL, pencilan HL/LH): ", specs$label[specs$id == spec], title_suffix))
 }
 p_lisa <- lisa_map(REF, "class_fdr", " (FDR 5%)")
 p_lisa; save_png(p_lisa, "13_lisa_cluster_map_acuan_fdr", 11, 7.5)
@@ -719,13 +729,12 @@ save_png(lisa_map(REF, "class_raw", " (p mentah < 0,05)"), "14_lisa_cluster_map_
 ```
 
 ```{r lisa-significance, fig.height = 7.5}
-sig_lv <- c("p ≤ 0,001", "p ≤ 0,01", "p ≤ 0,05", "Tidak signifikan")
+sig_lv <- SIG_LV
 lisa <- lisa |> mutate(sig_band = cut(p_fdr, c(-Inf, .001, .01, .05, Inf), labels = sig_lv))
 p_sig <- ggplot(col |> select(POLYID) |> left_join(filter(lisa, spec_id == REF), by = "POLYID")) +
-  geom_sf(aes(fill = sig_band), colour = "white", linewidth = .25) + facet_wrap(~var, ncol = 3) +
-  scale_fill_manual(values = c("#0b5d1e", "#3c9d52", "#a8d5a2", "#ececec"), drop = FALSE, name = "p (FDR)") +
-  theme_void(base_size = 10) + labs(title = "Peta signifikansi LISA (p terkoreksi FDR): Queen · W") +
-  theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
+  geom_sf(aes(fill = sig_band), colour = ARC$ns_line, linewidth = .25, show.legend = TRUE) + facet_wrap(~var, ncol = 3) +
+  scale_fill_manual(values = COL_SIG, drop = FALSE, name = "p (FDR)") +
+  theme_archive_map(10) + labs(title = "Peta signifikansi LISA (p terkoreksi FDR): Queen · W", subtitle = "Makin gelap, makin kecil p")
 p_sig; save_png(p_sig, "15_lisa_significance_map_acuan", 11, 7.5)
 ```
 
@@ -795,17 +804,19 @@ save_csv(cr, "19e_crime_lisa_queenW_urut_p")
 
 ```{r lisa-change, fig.height = 8}
 p_lchg <- ggplot(lisa_summ, aes(var, reorder(label, -order), fill = `Sama dgn acuan, FDR (%)`)) +
-  geom_tile(colour = "white") + geom_text(aes(label = `Sig. (FDR)`), size = 3) +
-  scale_fill_gradient(low = "#b03a2e", high = "#f4f6f7", limits = c(min(lisa_summ$`Sama dgn acuan, FDR (%)`), 100), name = "% kelas sama\ndgn Queen·W") +
+  geom_tile(colour = ARC$field) +
+  geom_text(aes(label = `Sig. (FDR)`), size = 3, colour = with(lisa_summ, { lo <- min(`Sama dgn acuan, FDR (%)`)
+    ink_on(seq_col(1 - (`Sama dgn acuan, FDR (%)` - lo) / (100 - lo))) })) +
+  scale_fill_gradientn(colours = rev(SEQ_RAMP), limits = c(min(lisa_summ$`Sama dgn acuan, FDR (%)`), 100), name = "% kelas sama\ndgn Queen·W") +
   labs(title = "Stabilitas klasifikasi LISA terhadap pilihan W", subtitle = "Warna: % dari 49 wilayah yang kelasnya sama dengan acuan · angka: jumlah wilayah signifikan (FDR)",
-       x = NULL, y = NULL) + theme(panel.grid = element_blank())
+       x = NULL, y = NULL) + theme(panel.grid = element_blank(), legend.key.width = unit(1.4, "cm"))
 p_lchg; save_png(p_lchg, "16_lisa_stabilitas_vs_acuan", 9, 9)
 ```
 
 ```{r lisa-region-grid, fig.height = 7}
 p_reg <- ggplot(filter(lisa, var == "CRIME") |> left_join(select(specs, spec_id = id, label, order), by = "spec_id"),
                 aes(factor(POLYID), reorder(label, -order), fill = factor(class_fdr, names(COL_LISA)))) +
-  geom_tile(colour = "white", linewidth = .2) + scale_fill_manual(values = COL_LISA, drop = FALSE, name = NULL) +
+  geom_tile(colour = ARC$field, linewidth = .2, show.legend = TRUE) + scale_fill_manual(values = COL_LISA, labels = LISA_LAB$id, drop = FALSE, name = NULL) +
   labs(title = "CRIME: kelas LISA (FDR) tiap wilayah pada 32 spesifikasi", x = "POLYID", y = NULL) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(size = 6, angle = 90))
 p_reg; save_png(p_reg, "17_lisa_kelas_per_wilayah_CRIME", 12, 8)
@@ -829,12 +840,10 @@ loc_sup <- bind_rows(lapply(seq_along(VARS), function(v) {
               Gi_class = case_when(Gi_p_fdr < ALPHA & Gi_star_z > 0 ~ "Hot spot", Gi_p_fdr < ALPHA ~ "Cold spot", TRUE ~ "Tidak signifikan"))
 save_csv(loc_sup, "22_local_geary_dan_gistar_queen")
 mk <- function(fill, pal, ttl) ggplot(col |> select(POLYID) |> left_join(loc_sup, by = "POLYID")) +
-  geom_sf(aes(fill = .data[[fill]]), colour = "white", linewidth = .25) + facet_wrap(~var, ncol = 3) +
-  scale_fill_manual(values = pal, name = NULL) + theme_void(base_size = 10) + labs(title = ttl) +
-  theme(plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold"))
-p_gi <- mk("Gi_class", c("Hot spot" = "#c0392b", "Cold spot" = "#2471a3", "Tidak signifikan" = "#ececec"), "Getis–Ord Gi* (Queen + diri sendiri, FDR 5%)")
-p_lc <- mk("localC_class", c("High-High" = "#d7191c", "Low-Low" = "#2c7bb6", "Other Positive" = "#f5b041", "Negative" = "#7d3c98", "Tidak signifikan" = "#ececec"),
-           "Local Geary (Queen · W, FDR 5%)")
+  geom_sf(aes(fill = factor(.data[[fill]], names(pal))), colour = ARC$ns_line, linewidth = .25, show.legend = TRUE) + facet_wrap(~var, ncol = 3) +
+  scale_fill_manual(values = pal, drop = FALSE, name = NULL) + theme_archive_map(10) + labs(title = ttl)
+p_gi <- mk("Gi_class", COL_GI, "Getis–Ord Gi* (Queen + diri sendiri, FDR 5%)")
+p_lc <- mk("localC_class", COL_LC, "Local Geary (Queen · W, FDR 5%)")
 p_gi; save_png(p_gi, "18_getis_ord_gistar_queen", 11, 7.5); save_png(p_lc, "19_local_geary_queen", 11, 7.5)
 p_lc
 sup_cmp <- loc_sup |> left_join(filter(lisa, spec_id == REF) |> select(var, POLYID, class_fdr), by = c("var", "POLYID")) |>
@@ -860,9 +869,10 @@ kt(gl_summ, 1); save_csv(gl, "24_konsistensi_global_lokal"); save_csv(gl_summ, "
 ```{r moran-scatter, fig.height = 6}
 ms <- bind_rows(lapply(VARS, function(v) { z <- as.numeric(scale(col[[v]])); tibble(var = v, POLYID = col$POLYID, z = z, lag = lag.listw(LW[[REF]], z)) })) |>
   left_join(filter(lisa, spec_id == REF) |> select(var, POLYID, class_fdr), by = c("var", "POLYID"))
-p_ms <- ggplot(ms, aes(z, lag)) + geom_hline(yintercept = 0, colour = "grey60") + geom_vline(xintercept = 0, colour = "grey60") +
-  geom_smooth(method = "lm", se = FALSE, colour = "grey30", linewidth = .5) +
-  geom_point(aes(colour = factor(class_fdr, names(COL_LISA))), size = 1.8) + scale_colour_manual(values = COL_LISA, drop = FALSE, name = "LISA (FDR)") +
+p_ms <- ggplot(ms, aes(z, lag)) + geom_hline(yintercept = 0, colour = ARC$rule) + geom_vline(xintercept = 0, colour = ARC$rule) +
+  geom_smooth(method = "lm", se = FALSE, colour = ARC$faint, linewidth = .5) +
+  geom_point(aes(fill = factor(class_fdr, names(COL_LISA))), shape = 21, colour = ARC$ink, stroke = .25, size = 2, show.legend = TRUE) +
+  scale_fill_manual(values = COL_LISA, labels = LISA_LAB$id, drop = FALSE, name = "LISA (FDR)") +
   facet_wrap(~var, ncol = 3) + labs(title = "Moran scatterplot (Queen · W)", x = "z (nilai terstandardisasi)", y = "Lag spasial Wz")
 p_ms; save_png(p_ms, "20_moran_scatterplot_acuan", 11, 7)
 ```
@@ -903,12 +913,13 @@ tpl <- "dashboard_html/template.html"
 if (file.exists(tpl)) {
   html <- paste(readLines(tpl, encoding = "UTF-8"), collapse = "\n")
   html <- sub("/*__DATA__*/null", gsub("</", "<\\/", json_txt, fixed = TRUE), html, fixed = TRUE)
-  fonts <- list.files("assets/fonts", "^inter-.*\\.woff2$", full.names = TRUE)
+  fonts <- list.files("assets/fonts", "^(inter|source-serif-4)-.*\\.woff2$", full.names = TRUE)
   ff <- vapply(fonts, function(f) {
-    fam <- "Inter"
+    fam <- if (startsWith(basename(f), "source-serif-4")) "Source Serif 4" else "Inter"
     wt <- regmatches(f, regexpr("[0-9]{3}", f))
+    encoded <- jsonlite::base64_enc(readBin(f, "raw", file.info(f)$size))
     sprintf("@font-face{font-family:'%s';font-weight:%s;font-style:normal;font-display:swap;src:url(data:font/woff2;base64,%s) format('woff2')}",
-            fam, wt, jsonlite::base64_enc(readBin(f, "raw", file.info(f)$size)))
+            fam, wt, gsub("[\r\n]", "", encoded))
   }, "")
   html <- sub("/*__FONTS__*/", paste(ff, collapse = "\n"), html, fixed = TRUE)
   writeLines(html, "dashboard_html/index.html", useBytes = TRUE)

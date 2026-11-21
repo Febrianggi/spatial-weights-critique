@@ -29,6 +29,10 @@ SITE_FILES = [
     "assets/fonts/inter-latin-600-normal.woff2",
     "assets/fonts/inter-latin-700-normal.woff2",
     "assets/fonts/OFL-Inter.txt",
+    "assets/fonts/source-serif-4-latin-600-normal.woff2",
+    "assets/fonts/OFL-SourceSerif4.txt",
+    "assets/cover/rumah-dan-kendaraan-800.webp",
+    "assets/cover/rumah-dan-kendaraan-1200.webp",
 ]
 
 
@@ -135,7 +139,7 @@ def browser_check(site: pathlib.Path) -> int:
             expect(page.url == base, f"no redirect to {base}: {page.url}")
             expect(page.evaluate("document.fonts.check('600 16px Inter')"), "Inter font not loaded on landing page")
             # landing -> dashboard (English)
-            page.click("#goDash"); page.wait_for_selector(".idx")
+            page.click("#goDash"); page.wait_for_selector("#comp-ref-count")
             expect(page.url == base + "dashboard_html/index.html?lang=en", f"dashboard url {page.url}")
             expect(page.evaluate("document.documentElement.lang") == "en", "dashboard not English")
             # dashboard -> report (English)
@@ -149,10 +153,20 @@ def browser_check(site: pathlib.Path) -> int:
             # report: case index anchors scroll to existing chapters
             page.click(".toc a[href='#simulation']")
             expect(page.url.endswith("#simulation"), "case index link did not navigate")
+            expect(page.locator("figure.cover img").count() == 1, "report cover image missing")
+            expect(page.locator("figure.cover figcaption").count() == 0, "obsolete report cover caption")
+            for lang in ("en", "id"):
+                page.click(f".lang button[data-lang='{lang}']")
+                page.click(".topbar .brand")
+                page.wait_for_selector("#goDash")
+                expect(page.url == base + "index.html?lang=" + lang, f"report brand destination in {lang}: {page.url}")
+                expect(page.locator("html").get_attribute("lang") == lang, "report brand lost language")
+                page.go_back()
+                page.wait_for_selector(".topbar .brand")
             # switch report to Indonesian, then follow the dashboard link
             page.click(".lang button[data-lang='id']")
             expect(page.evaluate("document.documentElement.dataset.lang") == "id", "report language switch failed")
-            page.click(".topbar .dash"); page.wait_for_selector(".idx")
+            page.click(".topbar .dash"); page.wait_for_selector("#comp-ref-count")
             expect(page.url == base + "dashboard_html/index.html?lang=id", f"dashboard url after switch {page.url}")
             expect(page.evaluate("document.documentElement.lang") == "id", "dashboard did not open in Indonesian")
             expect(page.locator("#lnRep").inner_text() == "Laporan penelitian", "report link not translated")
@@ -160,9 +174,14 @@ def browser_check(site: pathlib.Path) -> int:
             page.click("#lnRep"); page.wait_for_selector("section.chap#simulation")
             expect(page.evaluate("document.documentElement.dataset.lang") == "id", "report did not open in Indonesian")
             # dashboard language links stay on the same page
-            page.goto(base + "dashboard_html/index.html"); page.wait_for_selector(".idx")
-            page.click("#lnId"); page.wait_for_selector(".idx")
+            page.goto(base + "dashboard_html/index.html"); page.wait_for_selector("#comp-ref-count")
+            page.click("#lnId"); page.wait_for_selector("#comp-ref-count")
             expect(page.url == base + "dashboard_html/index.html?lang=id", f"language link url {page.url}")
+            page.click("#home-link")
+            expect(page.url == base + "index.html?lang=id", "dashboard brand lost the landing page language")
+            expect(page.locator("#goDash").inner_text().strip() == "Buka Dashboard", "incorrect Indonesian dashboard link")
+            page.click(".lang [data-lang=en]")
+            expect(page.locator("#goDash").inner_text().strip() == "Open Dashboard", "incorrect English dashboard link")
             # landing page in Indonesian points both cards to Indonesian pages
             page.goto(base + "?lang=id")
             expect(page.get_attribute("#goReport", "href") == "reports/Columbus_Spatial_Analysis.html?lang=id", "landing report link not localized")

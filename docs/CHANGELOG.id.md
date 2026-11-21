@@ -167,3 +167,44 @@ Bab baru **10** di laporan, kode di `sim_crime_child.Rmd` (dipanggil Rmd utama s
 - `renv.lock` (R 4.3.3, 75 paket), `requirements-test.txt` (Playwright 1.63.0), `docs/DEPLOYMENT.md`.
 - `data/geoda_sal/README.md` disesuaikan dengan berkas yang benar-benar ada (`columbus.json` tidak disertakan dan tidak dipakai).
 - Hasil komputasi tidak berubah: ke-42 CSV, 20 PNG, dan berkas simulasi identik byte per byte dengan knit sebelumnya.
+
+## Versi 3.2: tampilan A+C (21 November 2026)
+
+Pilihan Febri: **A** (ilustrasi rumah dan sedan) untuk halaman depan dan sampul laporan, **C** (gaya arsip statistik) untuk isi laporan, dashboard, peta, dan grafik. Tema gelap bernuansa TKP dari versi sebelumnya dihapus.
+
+- **Dihapus dari sumber dan halaman terbitan:** pita "POLICE LINE", barisan foto tahanan, garis kapur, penanda barang bukti, dan siluet acak di latar (`report_assets/report.js`). Label "Exhibit/Bukti" menjadi "Figure/Gambar", "Berkas perkara" menjadi "Daftar isi".
+- **Sampul (A):** `assets/cover/` berisi ilustrasi dalam dua ukuran WebP. Halaman depan memakai `srcset`, laporan menyematkan versi 800 px. Judul, satuan, dan sumber tetap teks dua bahasa.
+- **Gaya arsip (C):** kertas terang, garis register biru, margin marun, judul serif (Source Serif 4, SIL OFL, `assets/fonts/`), angka tabular. Bidang data berlatar polos tanpa kisi. Temuan utama laporan ditulis sebagai register bernomor.
+- **Satu palet untuk semua keluaran:** `analysis/style.R` dipakai `core.Rmd`, `simulation.Rmd`, dan `report_helpers.R`; dashboard memakai nilai yang sama. HH/LL jenuh, HL/LH muda, tidak signifikan abu-abu hangat; Gi* dan Local Geary memakai warna HH/LL untuk arti yang sama. Local Geary kini membedakan "Other Positive" (kuning tua) dari "Negative" (ungu). Peta signifikansi: p FDR terkecil paling gelap (urutan warna sebelumnya terbalik di dashboard). Nilai variabel memakai ramp biru tinta lima kelas dengan satuan di legenda; satuan OPEN dan DISCBD ditulis "tidak dicatat sumber" karena dokumentasi data tidak menyebutnya.
+- **Pembeda selain warna:** Moran = lingkaran, Geary = segitiga, kosong = tidak signifikan, di PNG, figur laporan, dan grafik dashboard. Kurva daya memakai warna, bentuk, dan jenis garis. Teks di atas heatmap memilih tinta atau putih menurut kontras WCAG.
+- **Peta baru:** laporan bab 7 punya Gambar "Seberapa kuat, dan seberapa stabil" (peta signifikansi p FDR pada Queen · W dan peta stabilitas: signifikan pada berapa dari 32 matriks). Dashboard punya lapisan "Stabilitas LISA di 32 matriks".
+- **Penutup laporan:** bab 9 diakhiri dengan arti hasil bagi pencurian rumah dan kendaraan gabungan per 1.000 rumah tangga, dari angka hasil knit. Tiga hitungan dipisahkan: wilayah dengan LISA signifikan setelah FDR 5%, klaster (wilayah Tinggi-Tinggi atau Rendah-Rendah; kelompok klaster = wilayah berkelas sama yang tersambung lewat ketetanggaan Queen), dan pencilan spasial (Tinggi-Rendah, Rendah-Tinggi), yang bukan anggota klaster. Tidak satu pun menyatakan jumlah kejadian. Contoh: pada 1/d · W ada 21 wilayah signifikan, yaitu 18 Tinggi-Tinggi dalam satu kelompok dan 3 pencilan Rendah-Tinggi (POLYID 7, 9, 22).
+- **Rentang 0–30 dibaca dengan benar:** di halaman depan, kedua README, ringkasan dashboard, dan register laporan, angka itu disebut "wilayah dengan LISA signifikan setelah FDR 5%" (klaster dan pencilan digabung), bukan "wilayah dalam klaster". Tinggi-Tinggi saja berkisar 0–22. Dashboard menampilkan rincian klaster/pencilan untuk kedua peta perbandingan, dan judul peta kelas LISA kini "klaster dan pencilan".
+- Perbandingan LISA, sorotan POLYID di kedua peta, dan transisi warna 260 ms dengan dukungan *reduced motion* dari desain atlas dipertahankan.
+- Hasil komputasi tidak berubah: ke-42 CSV dan JSON hasil identik byte per byte dengan knit sebelumnya (`tests/check_reproducibility.R`, di luar stempel waktu); berkas simulasi juga identik. Yang berubah hanya 20 PNG di `output/png/` dan 3 PNG simulasi, karena tampilannya. `tests/validate_outputs.R` 106 lolos, `tests/test_html_dashboard.py` 426 pemeriksaan lolos, `tests/check_site.py` 0 masalah (26 tautan dan aset, 20 langkah navigasi).
+
+## 21 November 2026 · Navigasi dashboard dan peta lokal
+
+- Dashboard dibagi menjadi tujuh tab. Perbandingan LISA membuka dashboard, dan tombol analisis membawa matriks pembanding ke tab Hasil matriks. Tautan langsung, tombol Kembali, dan pergantian EN/ID mengenali tab aktif.
+- Peta tingkat pencurian dan keenam lapisan analisis lokal memakai bingkai, skala tampilan, serta tipografi peta perbandingan. Legenda tetap mengikuti satuan atau kelas masing-masing lapisan.
+- Nama Spatial Weights Critique di kiri atas membawa pembaca ke beranda dalam bahasa aktif. Pilihan bahasa disingkat EN dan ID.
+- Tombol beranda menjadi “Buka Dashboard” dan “Open Dashboard”. Keterangan di bawah ilustrasi sampul dihapus pada kedua bahasa.
+
+## 21 November 2026 · Kontrol dan transisi peta
+
+- Pada tab Peta lokal, pemilih keluarga bobot, parameter, dan skema bobot tetap terjangkau saat menggulir. Di ponsel, tombol matriks membuka kontrol di atas peta tanpa menggeser wilayah yang sedang dibaca.
+- Warna wilayah bertransisi selama 460 ms ketika kelas berubah pada peta lokal dan perbandingan LISA. Batas wilayah tetap di tempat. Garis ketetanggaan yang ditampilkan muncul selama 320 ms. Pengaturan kurangi gerakan menampilkan pembaruan langsung.
+- Keterangan “Illustration…” dan “Ilustrasi…” di bawah gambar sampul laporan dihapus dari sumber Rmd dan HTML terbitan.
+- Nama proyek di kiri atas laporan membuka beranda situs dalam bahasa aktif, termasuk ketika pembaca datang dari tengah bab.
+
+## 21 November 2026 · Satu pemilih matriks dan pengurutan tabel
+
+- Kontrol keluarga bobot, parameter, dan skema mengikuti guliran di ketujuh tab. Pilihan aktif mengatur semua tampilan, termasuk peta pembanding LISA. Acuan Queen · W tetap menjadi peta pembanding tetap di kiri.
+- Simulasi merangkum jumlah matriks per kelas. Grafik dan tabel daya menyorot matriks yang dipilih lewat kontrol bobot.
+- Klik judul kolom di Tabel & unduhan untuk mengurutkan naik atau turun. Matriks terpilih menempati baris pertama. Saat pilihan berpindah, matriks sebelumnya kembali mengikuti urutan kolom. CSV selalu memakai urutan bawaan 32 matriks dan menyimpan nilai presisi penuh, termasuk ketika tabel sedang diurutkan dan baris terpilih berada di atas.
+
+## 21 November 2026 · Sorotan pilihan dan pergerakan baris
+
+- Penanda tab, kontrol bobot, dan pilihan simulasi bergerak ke posisi baru. Grafik sensitivitas, wilayah pilihan LISA, hasil matriks, serta peta daya menandai perubahan yang relevan.
+- Saat pilihan matriks berganti, baris terpilih bergerak ke atas dan baris sebelumnya kembali ke urutan kolom. CSV tetap mengikuti urutan sumber. Preferensi kurangi gerakan menampilkan hasil akhir langsung.
+- Tab Metode berisi penjelasan tetap sehingga pemilih bobot disembunyikan di sana. Pilihan tetap tersimpan ketika kembali ke tab analisis.

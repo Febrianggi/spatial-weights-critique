@@ -3,95 +3,140 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FACC15'/%3E%3Cpath d='M-4 20 20-4h8L-4 28zM4 36 36 4v8L12 36z' fill='%23111827'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='3' width='24' height='26' fill='%23FAFAF7' stroke='%2317233B' stroke-width='2'/%3E%3Cpath d='M9 3v26' stroke='%237D1F31' stroke-width='3'/%3E%3Cpath d='M12 10h13M12 15h13M12 20h13M12 25h13' stroke='%23C9D3DF' stroke-width='1.5'/%3E%3C/svg%3E">
 <title>Columbus · Sensitivitas Moran's I dan Geary's C</title>
 <style>
 /*__FONTS__*/
 :root{
-  /* malam, ruang kendali */
-  --bg:#0A101C; --bg-2:#0E1626; --surface:#111B2E; --surface-2:#17243B;
-  --line:#22324F; --line-strong:#2E4266;
-  --text:#E6EBF3; --muted:#A3B1C6; --faint:#8494AD;
-  /* satu aksen: kuning garis polisi (pilihan, fokus) */
-  --accent:#FACC15; --accent-ink:#111827; --accent-soft:rgba(250,204,21,.12);
+  /* statistical-archive tokens, shared with report_assets/report.css and index.html */
+  --bg:#F1F1EC; --bg-2:#E9EAE4; --surface:#FAFAF7; --surface-2:#F0F2F4;
+  --line:#C9D3DF; --line-strong:#9AA7B8;
+  --text:#17233B; --muted:#4B5566; --faint:#5A6271;
+  --accent:#7D1F31; --accent-ink:#fff; --accent-soft:rgba(125,31,49,.08);
   /* encoding data */
-  --moran:#60A5FA; --geary:#FB923C; --pos:#F87171; --neg:#60A5FA; --ns:#64748B;
-  --success:#4ADE80; --warning:#FBBF24; --danger:#F87171;
-  --robust:#4ADE80; --mid:#A5B4CB; --sens:#F87171;
+  --moran:#24477A; --geary:#9A3D24; --pos:#A3263A; --neg:#24477A; --ns:#9AA0A8;
+  --success:#2D6A4A; --warning:#8d560d; --danger:#A3263A;
+  --robust:#2D6A4A; --mid:#5F6673; --sens:#A3263A;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
-  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px;
+  --r-sm:3px; --r-md:4px; --r-lg:5px; --r-xl:6px;
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-  color-scheme:dark;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  color-scheme:light;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
-body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.55 var(--font);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.55 var(--font);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;position:relative;overflow-x:clip}
 h1,h2,h3{margin:0;line-height:1.2;color:var(--text)}
 h1{font-size:clamp(28px,3.8vw,44px);font-weight:700;letter-spacing:-.025em}
-h2{font-size:clamp(20px,2.2vw,24px);font-weight:650;letter-spacing:-.015em}
+h2{font:600 clamp(21px,2.3vw,26px)/1.2 var(--serif);letter-spacing:-.005em}
 h3{font-size:16px;font-weight:600;letter-spacing:-.005em}
 p{margin:0}
 a{color:var(--accent)}
-strong{color:#fff;font-weight:600}
+strong{color:var(--text);font-weight:600}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum","cv11"}
 .muted{color:var(--muted)}
 .wrap{max-width:1320px;margin:0 auto;padding:0 var(--s5);position:relative}
 
-/* ---------- latar siluet acak ---------- */
-#bgfx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-#bgfx svg{position:absolute;color:#C7D2E3}
-header.top,.toolbar,main,footer{position:relative;z-index:1}
-
-/* ---------- header: barisan foto tahanan ---------- */
-header.top{background:radial-gradient(60% 90% at 78% 30%,rgba(250,204,21,.10),transparent 60%),linear-gradient(180deg,#0C1424 0%,#0A101C 100%);padding:var(--s7) 0 0;overflow:hidden}
-header.top .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:var(--s5);align-items:end;min-height:360px}
-header.top .intro{padding-bottom:150px;position:relative;z-index:2}
-header.top .kicker{font-size:14px;font-weight:500;color:var(--accent);margin-bottom:var(--s3)}
-header.top .lead{color:var(--muted);max-width:600px;margin-top:var(--s4);font-size:16px}
-.lineup{position:relative;align-self:stretch;min-height:340px}
-.lineup svg{position:absolute;inset:0;width:100%;height:100%}
-.lineup .cap{position:absolute;right:0;bottom:var(--s3);font-size:12.5px;color:var(--muted);background:rgba(10,16,28,.75);padding:4px 10px;border-radius:var(--r-sm)}
-.chalk{position:absolute;left:max(8px,calc(50% - 680px));bottom:6px;width:300px;opacity:.28;pointer-events:none}
-.tape-wrap{position:relative;z-index:2;overflow:hidden;padding:10px 0;margin-top:-22px}
-.tape{height:40px;margin:0 -2%;transform:rotate(-.7deg);background:repeating-linear-gradient(-45deg,#FACC15 0 26px,#111827 26px 52px);box-shadow:0 6px 18px rgba(0,0,0,.45);display:flex;align-items:center;overflow:hidden}
-.lang{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:var(--s5)}
-.lang a.rep{margin-left:8px}
-.lang a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line-strong);border-radius:999px;color:var(--muted);font-size:14px;font-weight:500;text-decoration:none}
-.lang a:hover{color:var(--text);border-color:#4A628C}
-.lang a[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
-.tape span{flex:none;margin:0 auto;padding:4px 18px;background:#FACC15;color:#111827;font-weight:800;font-size:14px;letter-spacing:.14em;white-space:nowrap}
+/* ---------- atlas and LISA comparison ---------- */
+header.top{border-bottom:1px solid var(--line)}
+.atlas-compare h1{font:600 clamp(34px,5vw,60px)/1.04 var(--serif);letter-spacing:-.015em}
+.masthead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0 var(--s5);border-bottom:1px solid var(--line)}
+.masthead .wrap{width:100%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0 var(--s5)}
+.brand{color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:11px;font-weight:700;min-height:48px}
+.brand::before{content:"";width:16px;height:18px;border:1.5px solid var(--text);border-left:4px solid var(--accent);background:repeating-linear-gradient(var(--surface) 0 4px,var(--line) 4px 5px)}
+.lang{display:flex;flex-wrap:wrap;gap:0 var(--s4)}
+.lang a{display:inline-flex;align-items:center;min-height:48px;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;text-decoration:none}
+.lang a:hover{text-decoration:underline;text-underline-offset:3px}
+.lang a[aria-current="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.atlas-compare{padding-block:clamp(26px,4vw,48px) var(--s5)}
+.atlas-compare .kicker{display:inline-block;margin-bottom:var(--s3);padding-top:var(--s2);border-top:2px solid var(--accent);font:600 16px/1.3 var(--serif);color:var(--text)}
+.atlas-compare .lead{max-width:68ch;margin-top:var(--s2);color:var(--muted)}
+.compare-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:var(--s2) var(--s4);margin-top:var(--s5);padding-top:var(--s3);border-top:1.5px solid var(--text)}
+.compare-controls .compare-key{margin-left:auto;font-size:13px;color:var(--muted);padding-bottom:var(--s2)}
+.compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s4);margin-top:var(--s3)}
+.compare-plate{min-width:0;margin:0;display:grid;grid-row:span 3;grid-template-rows:subgrid;border:1px solid var(--line);border-top:1.5px solid var(--text);background:var(--surface)}
+.compare-plate figcaption{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px var(--s3);padding:var(--s2) var(--s3)}
+.compare-plate figcaption span{display:block;font-size:12px;color:var(--muted)}
+.compare-plate :is(h2,h3){font:600 clamp(19px,2.4vw,27px)/1.12 var(--serif);margin-top:2px}
+.compare-plate figcaption strong{font-size:13px;color:var(--accent)}
+.compare-map{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:center}
+.compare-map svg{display:block;width:100%;height:auto;max-height:300px}
+.compare-map .reg{cursor:pointer;stroke:#fff;stroke-width:.85px;vector-effect:non-scaling-stroke}
+.compare-map .reg:hover{stroke:var(--text);stroke-width:1.8px}
+.compare-map .reg{transition:fill 460ms ease-in-out}
+@keyframes show-links{from{opacity:0}to{opacity:1}}
+.neighbour-links{animation:show-links 320ms ease-out}
+.compare-outline{fill:none;stroke:var(--text);stroke-width:2px;vector-effect:non-scaling-stroke;pointer-events:none}
+.compare-stats{font-size:13px;color:var(--muted);padding:var(--s2) var(--s3);display:flex;flex-wrap:wrap;gap:0 var(--s4)}
+.compare-notes{margin-top:var(--s2)}
+.compare-notes .legend{margin-top:0}
+#comp-status{margin-top:var(--s2);font-size:13px;color:var(--muted)}
+.district-details{display:flex;align-items:end;flex-wrap:wrap;gap:var(--s2) var(--s4);padding-top:var(--s3);margin-top:var(--s3);border-top:1px solid var(--line)}
+.district-details p{flex:1 1 220px;font-size:13px;color:var(--muted);padding-block:var(--s2)}
+#h-hasil{scroll-margin-top:115px}
+@media (max-width:600px){
+  .compare-controls .compare-key{margin-left:0;padding:0}
+  .compare-grid{column-gap:var(--s2)}
+  .compare-plate figcaption,.compare-stats{padding-inline:var(--s2)}
+  .compare-map svg{max-height:170px}
+  .compare-stats{font-size:12px}
+  .lang{gap:0 var(--s3)}
+  #h-hasil{scroll-margin-top:16px}
+}
 
 /* ---------- toolbar ---------- */
-.toolbar{position:sticky;top:0;z-index:20;background:rgba(10,16,28,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.toolbar{background:var(--bg);border-bottom:1px solid var(--line)}
+.filter-toggle{display:none}
+@media(max-width:760px){
+  .filter-toggle{display:block;width:100%;min-height:44px;border:0;padding:var(--s2) var(--s4);background:var(--surface);font:inherit;font-size:14px;font-weight:600;text-align:left;color:var(--text);cursor:pointer}
+  .filter-toggle::after{content:"+";float:right}
+  .filter-toggle[aria-expanded="true"]::after{content:"−"}
+  #filter-toggle[aria-expanded="false"] + #matrix-controls{display:none}
+}
 .toolbar .wrap{display:flex;flex-wrap:wrap;gap:var(--s3) var(--s4);align-items:flex-end;padding-top:var(--s3);padding-bottom:var(--s3)}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field>label,.field>.lbl{font-size:13px;font-weight:500;color:var(--muted)}
 select{font:inherit;font-size:14px;min-height:44px;padding:0 36px 0 var(--s3);border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);color:var(--text);appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23E6EBF3' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
-select:hover{border-color:#4A628C}
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%234d5b6a' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
+select:hover{border-color:var(--text)}
 .seg{display:flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
-.seg button{font:inherit;font-size:13px;font-weight:500;min-height:44px;padding:0 var(--s3);border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button{font:inherit;font-size:13px;font-weight:500;min-height:44px;padding:0 var(--s3);border:0;border-radius:2px;background:transparent;color:var(--muted);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:650}
 .seg button:hover:not([aria-pressed="true"]){color:var(--text);background:var(--surface-2)}
 .btn{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:0 var(--s4);border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);color:var(--text);cursor:pointer}
-.btn:hover{border-color:#4A628C;background:var(--surface-2)}
+.btn:hover{border-color:var(--text);background:var(--surface-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
-.btn.primary:hover{background:#FDE047;border-color:#FDE047}
+.btn.primary:hover{background:#5E1724;border-color:#5E1724}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .spacer{flex:1}
 
-main{padding:var(--s6) 0 var(--s7)}
+main{padding-bottom:var(--s6)}
+#dashboard-nav{display:block;position:sticky;top:0;z-index:21}
+@media(max-width:760px){
+  #dashboard-nav{display:contents}
+  #dashboard-nav .toolbar{position:sticky;top:0;z-index:20}
+  #dashboard-nav #matrix-controls{position:absolute;inset:100% 0 auto;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 5px 12px rgba(23,35,59,.1)}
+}
+#dashboard-nav #matrix-controls{max-height:52vh;max-height:52dvh;overflow-y:auto;overscroll-behavior:contain}
+.tab-strip{background:var(--bg);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:21}
+#dashboard-tabs{display:flex;flex-wrap:wrap;gap:0 var(--s4)}
+#dashboard-tabs button{font:inherit;font-size:14px;font-weight:600;color:var(--muted);background:transparent;border:0;border-bottom:3px solid transparent;min-height:44px;cursor:pointer;padding:0 2px}
+#dashboard-tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+#dashboard-tabs button:hover,.brand:hover{text-decoration:underline;text-underline-offset:4px}
+#app>[role="tabpanel"]{padding-top:var(--s5)}
+@media(max-width:760px){.tab-strip{position:static}#dashboard-tabs{gap:0 var(--s3)}}
+
 section{margin-bottom:var(--s7)}
-.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2) var(--s5);margin-bottom:var(--s4)}
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2) var(--s5);margin-bottom:var(--s4);padding-top:var(--s3);border-top:3px double var(--text)}
 .sec-head p{max-width:720px;font-size:14px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s5)}
+.panel{background:var(--surface);border:1px solid var(--line);border-top:1.5px solid var(--text);padding:var(--s5)}
 
 /* ---------- hasil ---------- */
 .result{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--s4)}
 .idx{grid-column:span 4;position:relative;overflow:hidden}
 .idx::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--moran)}
 .idx.geary::before{background:var(--geary)}
-.idx .big{font-size:clamp(34px,4.2vw,46px);font-weight:650;letter-spacing:-.03em;line-height:1.05;margin:var(--s3) 0 var(--s4);font-variant-numeric:tabular-nums;color:#fff}
+.idx .big{font:600 clamp(34px,4.2vw,46px)/1.05 var(--serif);margin:var(--s3) 0 var(--s4);font-variant-numeric:lining-nums tabular-nums;color:var(--text)}
 .idx dl{display:grid;grid-template-columns:auto 1fr;gap:6px var(--s3);margin:0;font-size:13.5px}
 .idx dt{color:var(--muted)} .idx dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
 .verdict{display:inline-flex;align-items:center;gap:var(--s2);font-weight:600;font-size:14px;margin-top:var(--s4)}
@@ -100,17 +145,24 @@ section{margin-bottom:var(--s7)}
 .agree-box .cat{font-size:17px;font-weight:600;margin-top:var(--s2);display:flex;align-items:center}
 .wstats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3);font-size:12.5px}
 .wstats div{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
-.wstats b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:#fff}
+.wstats b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
 
 /* ---------- peta ---------- */
 .maps{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
-.map-head{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center;justify-content:space-between;margin-bottom:var(--s2)}
-.map svg{width:100%;height:auto;display:block}
-.map path.reg{stroke:var(--surface);stroke-width:.9;vector-effect:non-scaling-stroke}
-.map path.reg:hover{stroke:var(--accent);stroke-width:2}
+.analysis-maps figcaption{display:grid;align-content:space-between;align-items:start;justify-content:start;gap:var(--s2);padding-block:var(--s3)}
+.analysis-maps figcaption h3{max-width:32ch}
+.analysis-maps .field,.analysis-maps select{max-width:100%}
+.analysis-maps .map-key{align-content:start;margin:0;padding:var(--s3)}
+.analysis-maps .compare-map .reg{cursor:help}
+@media(max-width:760px){
+  .analysis-maps{grid-template-columns:1fr;row-gap:var(--s3)}
+  .analysis-maps .compare-plate{grid-row:auto;grid-template-rows:auto auto auto}
+  .analysis-maps .compare-map svg{max-height:270px}
+}
 .legend{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);font-size:12.5px;margin-top:var(--s3);color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
-.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid rgba(255,255,255,.12)}
+.sw{width:12px;height:12px;display:inline-block;border:1px solid rgba(23,35,59,.22)}
+.legend .lt{flex-basis:100%;font-weight:600;color:var(--text)}
 .check{display:inline-flex;align-items:center;gap:var(--s2);font-size:14px;min-height:44px;cursor:pointer}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
 
@@ -119,52 +171,64 @@ section{margin-bottom:var(--s7)}
 .chart svg{display:block;width:100%}
 .axis text{font:11.5px var(--font);font-variant-numeric:tabular-nums;fill:var(--faint)}
 .axis line,.axis path{stroke:var(--line-strong)}
-.gridline{stroke:#1A2840}
+.gridline{stroke:var(--line)}
 .keyline{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);font-size:12.5px;margin:var(--s2) 0;color:var(--muted)}
 .keyline span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .dotplot .row{display:grid;grid-template-columns:132px 1fr;align-items:center;min-height:26px;border-radius:var(--r-sm)}
-.dotplot .row button{font:inherit;font-size:12.5px;text-align:left;border:0;background:none;padding:2px 8px;border-radius:var(--r-sm);cursor:pointer;color:var(--text);min-height:26px}
-.dotplot .row button:hover{background:var(--surface-2)}
+.dotplot .spec-label{font:inherit;font-size:12.5px;text-align:left;border:0;background:none;padding:2px 8px;border-radius:var(--r-sm);color:var(--text);min-height:26px}
 .dotplot .row.sel{background:var(--accent-soft)}
-.dotplot .row.sel button{font-weight:650;color:var(--accent)}
+.dotplot .row.sel .spec-label{font-weight:650;color:var(--accent)}
 .dotplot .fam{font-size:12px;font-weight:600;color:var(--muted);padding:var(--s3) 8px 2px}
 
 /* ---------- tabel ---------- */
-.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.seg button,#dashboard-tabs button,.dotplot .row,.bars .brow,.pheat .rl,.pheat .c,#cmp th button{position:relative}
+.moving-highlight{position:absolute;inset:0;border:2px solid var(--accent);border-radius:2px;pointer-events:none;z-index:2;transform-origin:top left}
+#dashboard-tabs .moving-highlight,#cmp .moving-highlight{top:auto;height:3px;border:0;background:var(--accent)}
+#cmp tr.sel{position:relative;z-index:1}
+#cmp tr.sel td{background:color-mix(in srgb,var(--surface) 89%,var(--accent))}
+#cmp th{padding:0}
+#cmp th button{min-height:44px;width:100%;padding:6px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
+#cmp th button:hover,#cmp th[aria-sort]{color:var(--accent)}
+#cmp .sort-arrow::after{content:"↕";padding-inline-start:4px}
+#cmp [aria-sort="ascending"] .sort-arrow::after{content:"↑"}
+#cmp [aria-sort="descending"] .sort-arrow::after{content:"↓"}
+#cmp .pinned-label{margin-inline-start:8px;color:var(--accent);font-weight:600}
+.tbl-wrap{overflow-x:auto;border-top:1.5px solid var(--text);border-bottom:1.5px solid var(--text);background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
-caption{caption-side:top;text-align:left;font-weight:600;font-size:14px;padding:var(--s3) var(--s4) var(--s2)}
-th,td{padding:9px var(--s3);border-bottom:1px solid #1A2840;text-align:right;white-space:nowrap}
-th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--bg-2);position:sticky;top:0}
+caption{caption-side:top;text-align:left;font:600 15px var(--serif);padding:var(--s3) var(--s4) var(--s2)}
+th,td{padding:9px var(--s3);border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-weight:600;font-size:12.5px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--text);position:sticky;top:0}
 tbody tr:last-child td{border-bottom:0}
 th:first-child,td:first-child,td.l,th.l{text-align:left}
 td.wrap-text,th.wrap-text{white-space:normal;min-width:220px;text-align:left}
 tr.sel td{background:var(--accent-soft)}
 tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
-tbody tr:hover td{background:#142037}
+tbody tr:hover td{background:var(--surface-2)}
 .pill{display:inline-flex;align-items:center;gap:6px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
 .concl{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4)}
 .concl .panel p+p{margin-top:var(--s2)}
 .concl h3{margin-bottom:var(--s2)}
 .state{padding:var(--s5);border:1px dashed var(--line-strong);border-radius:var(--r-lg);color:var(--muted);text-align:center}
-.state.err{border-color:var(--danger);color:#FECACA;background:rgba(248,113,113,.08)}
-footer{border-top:1px solid var(--line);padding:var(--s5) 0;color:var(--muted);font-size:13px;background:var(--bg-2)}
-#tip{position:fixed;z-index:50;pointer-events:none;background:#E6EBF3;color:#0A101C;font-size:12.5px;line-height:1.45;padding:8px 11px;border-radius:var(--r-md);max-width:300px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.state.err{border-color:var(--danger);color:var(--danger);background:rgba(163,38,58,.06)}
+footer{border-top:1.5px solid var(--text);padding:var(--s5) 0;color:var(--muted);font-size:13px}
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--text);color:var(--surface);font-size:12.5px;line-height:1.45;padding:8px 11px;border-radius:var(--r-md);max-width:300px;display:none;box-shadow:0 8px 24px rgba(20,39,57,.22)}
+#tip b{color:inherit}
 #tip b{font-weight:650}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* ---------- simulasi ---------- */
 .answer{display:grid;grid-template-columns:1.35fr 1fr;gap:var(--s4)}
-.answer .hero{padding:var(--s6);border-radius:var(--r-xl);background:var(--surface-2);border:1px solid var(--line-strong);display:flex;flex-direction:column;position:relative;overflow:hidden}
+.answer .hero{padding:var(--s6);background:var(--surface);border:1px solid var(--line);border-top:1.5px solid var(--text);border-left:3px solid var(--accent);display:flex;flex-direction:column;position:relative;overflow:hidden}
 .hero .q{font-size:15px;color:var(--muted)}
-.hero .pick{font-size:clamp(52px,7.4vw,92px);font-weight:750;letter-spacing:-.045em;line-height:1;margin:var(--s3) 0 var(--s4);color:var(--accent)}
-.hero .why{font-size:16px;max-width:560px;color:#CBD5E1;margin-bottom:var(--s5)}
+.hero .pick{font:600 clamp(50px,7vw,88px)/1 var(--serif);letter-spacing:-.02em;margin:var(--s3) 0 var(--s4);color:var(--accent);font-variant-numeric:lining-nums}
+.hero .why{font-size:16px;max-width:560px;color:var(--muted);margin-bottom:var(--s5)}
 .facts{display:flex;flex-wrap:wrap;gap:var(--s5) var(--s6);margin-top:auto;padding-top:var(--s5);border-top:1px solid var(--line)}
 .facts div{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
-.facts b{font-size:24px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#fff}
+.facts b{font:600 24px var(--serif);font-variant-numeric:lining-nums tabular-nums;color:var(--text)}
 .facts span{font-size:13px;color:var(--muted)}
 .aside{display:flex;flex-direction:column;gap:var(--s4)}
-.aside .panel p{font-size:14px;color:#CBD5E1}
+.aside .panel p{font-size:14px;color:var(--muted)}
 .aside .panel p+p{margin-top:var(--s2)}
 .aside h3{margin-bottom:var(--s2)}
 .olist{margin:var(--s2) 0 0;padding-left:20px;font-size:14px}
@@ -172,54 +236,49 @@ footer{border-top:1px solid var(--line);padding:var(--s5) 0;color:var(--muted);f
 .olist li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 10px 3px 8px;border-radius:999px;white-space:nowrap}
 .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.b-Robust{color:var(--robust);background:rgba(74,222,128,.12)}
-.b-Menengah{color:var(--mid);background:rgba(165,180,203,.13)}
-.b-Sensitif{color:var(--sens);background:rgba(248,113,113,.13)}
-.b-ok{color:var(--robust);background:rgba(74,222,128,.12)}
+.b-Robust{color:var(--robust);background:rgba(45,106,74,.10)}
+.b-Menengah{color:var(--mid);background:rgba(95,102,115,.10)}
+.b-Sensitif{color:var(--sens);background:rgba(163,38,58,.09)}
+.b-ok{color:var(--robust);background:rgba(45,106,74,.10)}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:var(--s4)}
 .split3{display:grid;grid-template-columns:1.25fr 1fr;gap:var(--s4)}
 .facts-list{list-style:none;margin:0;padding:0}
-.facts-list li{display:grid;grid-template-columns:1fr auto;gap:var(--s3);align-items:start;padding:var(--s3) 0;border-bottom:1px solid #1A2840;font-size:14px}
+.facts-list li{display:grid;grid-template-columns:1fr auto;gap:var(--s3);align-items:start;padding:var(--s3) 0;border-bottom:1px solid var(--line);font-size:14px}
 .facts-list li:last-child{border-bottom:0}
 .facts-list .res{font-size:13px;color:var(--muted);margin-top:2px}
 .classboard{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4)}
-.classboard .col h3{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font:inherit;font-size:13px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--text);cursor:pointer;font-variant-numeric:tabular-nums}
-.chip:hover{border-color:#4A628C}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+.classboard .col h3{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin:0}
 .controls{display:flex;flex-wrap:wrap;gap:var(--s3) var(--s5);align-items:flex-end;margin-bottom:var(--s4)}
-.bars .brow{display:grid;grid-template-columns:118px 1fr 52px;align-items:center;gap:var(--s2);min-height:24px;border-radius:var(--r-sm);cursor:pointer;padding:0 6px}
-.bars .brow:hover{background:var(--surface-2)}
+.bars .brow{display:grid;grid-template-columns:118px 1fr 52px;align-items:center;gap:var(--s2);min-height:24px;border-radius:var(--r-sm);padding:0 6px}
 .bars .brow.sel{background:var(--accent-soft)}
 .bars .brow.sel .bl{color:var(--accent);font-weight:650}
 .bars .bl{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bars .bv{font-size:12.5px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
 .bars .track{position:relative;height:14px}
 .bars .fill{position:absolute;left:0;top:2px;bottom:2px;border-radius:3px}
-.bars .thr{position:absolute;top:-3px;bottom:-3px;width:0;border-left:1.5px dashed #7C8BA3}
+.bars .thr{position:absolute;top:-3px;bottom:-3px;width:0;border-left:1.5px dashed var(--faint)}
 .pheat{display:grid;gap:2px;font-size:12px;overflow-x:auto}
 .pheat .h{font-weight:600;font-size:12px;text-align:center;padding:4px 2px;color:var(--muted);line-height:1.25}
-.pheat .rl{white-space:nowrap;padding-right:var(--s2);display:flex;align-items:center;font-size:12.5px;cursor:pointer}
+.pheat .rl{white-space:nowrap;padding-right:var(--s2);display:flex;align-items:center;font-size:12.5px}
 .pheat .rl.sel{color:var(--accent);font-weight:650}
-.pheat .c{display:flex;align-items:center;justify-content:center;min-height:24px;border-radius:4px;font-variant-numeric:tabular-nums;font-size:12px;min-width:64px;cursor:pointer}
-.pheat .c.best{box-shadow:inset 0 0 0 2px #FB923C}
+.pheat .c{display:flex;align-items:center;justify-content:center;min-height:24px;border-radius:4px;font-variant-numeric:tabular-nums;font-size:12px;min-width:64px}
+.pheat .c.best{box-shadow:inset 0 0 0 2px var(--geary)}
 .pheat .c.sel{outline:2.5px solid var(--accent);outline-offset:1px}
 .mult{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s3)}
 .mult h4{margin:0 0 4px;font-size:12.5px;font-weight:600;color:var(--muted)}
 .note{font-size:13px;color:var(--muted);margin-top:var(--s3);max-width:760px}
 [hidden]{display:none!important}
 .purpose{display:grid;grid-template-columns:1.1fr 1fr;gap:var(--s5);align-items:start}
-.purpose-main h2{font-size:clamp(24px,2.8vw,32px);margin-bottom:var(--s3)}
-.purpose-main p{color:#CBD5E1;font-size:16px;max-width:620px}
+.purpose-main h2{font-size:clamp(24px,2.8vw,32px);margin-bottom:var(--s3);font-family:var(--serif)}
+.purpose-main p{color:var(--muted);font-size:16px;max-width:620px}
 .purpose-main h3{margin:var(--s5) 0 var(--s2)}
-.purpose-main .olist li{padding:4px 0;color:#CBD5E1}
+.purpose-main .olist li{padding:4px 0;color:var(--muted)}
 .purpose-facts{border-left:3px solid var(--accent)}
 .purpose-facts h3{margin-bottom:var(--s3)}
 .evid{list-style:none;margin:0;padding:0}
-.evid li{display:grid;grid-template-columns:150px 1fr;gap:var(--s3);align-items:baseline;padding:var(--s3) 0;border-bottom:1px solid #1A2840;font-size:14px;color:#CBD5E1}
+.evid li{display:grid;grid-template-columns:150px 1fr;gap:var(--s3);align-items:baseline;padding:var(--s3) 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--muted)}
 .evid li:last-child{border-bottom:0}
-.evid b{font-size:19px;white-space:nowrap;font-weight:650;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.evid b{font:600 20px var(--serif);white-space:nowrap;color:var(--accent);font-variant-numeric:lining-nums tabular-nums}
 .purpose>*{min-width:0}
 .answer>*,.split>*,.split3>*,.two>*,.charts>*,.maps>*,.classboard>*{min-width:0}
 
@@ -228,16 +287,9 @@ footer{border-top:1px solid var(--line);padding:var(--s5) 0;color:var(--muted);f
   .charts,.concl,.answer,.split3,.purpose{grid-template-columns:1fr}
   .mult{grid-template-columns:repeat(3,1fr)}
 }
-@media (max-width:900px){
-  header.top .wrap{grid-template-columns:1fr;min-height:0}
-  header.top .intro{padding-bottom:0}
-  .chalk{display:none}
-  .lineup{min-height:260px}
-}
 @media (max-width:760px){
   .wrap{padding:0 var(--s4)}
-  header.top{padding-top:var(--s6)}
-  .lineup{min-height:220px}
+  .atlas-compare{padding-block:var(--s5)}
   .idx{grid-column:span 12} .maps,.two,.split,.classboard{grid-template-columns:1fr}
   .toolbar{position:static}
   .toolbar .field{flex:1 1 100%} .seg button{flex:1 1 auto} .toolbar select{width:100%}
@@ -247,29 +299,28 @@ footer{border-top:1px solid var(--line);padding:var(--s5) 0;color:var(--muted);f
   .bars .brow{grid-template-columns:96px 1fr 44px}
   .facts-list li{grid-template-columns:1fr} .facts-list .badge{justify-self:start;white-space:normal}
   .evid li{grid-template-columns:1fr;gap:2px}
-  .tape span{font-size:12px;letter-spacing:.1em}
-  .lineup .cap{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div id="tip" role="tooltip"></div>
-<div id="bgfx" aria-hidden="true"></div>
-<header class="top"><div class="wrap">
-  <div class="intro">
-    <nav class="lang" aria-label="Language"><a id="lnEn" href="?lang=en" hreflang="en">English</a><a id="lnId" href="?lang=id" hreflang="id">Bahasa Indonesia</a><a id="lnRep" class="rep" href="../reports/Columbus_Spatial_Analysis.html">Research report</a></nav>
-    <p class="kicker" id="tKicker"></p>
-    <h1 id="tTitle"></h1>
-    <p class="lead" id="tLead"></p>
-  </div>
-  <div class="lineup" id="lineup"></div>
-</div>
-<svg class="chalk" viewBox="0 0 300 170" aria-hidden="true"><g fill="none" stroke="#F8FAFC" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="52" cy="46" r="17"/><path d="M66 58 L100 50 L140 22 L152 30 L118 62 L170 70 L222 52 L270 68 L266 80 L224 70 L196 92 L246 128 L238 138 L184 106 L150 100 L118 124 L104 152 L92 148 L102 118 L84 98 L46 108 L42 96 L76 82 Z"/></g></svg>
+<header class="top">
+  <div class="masthead"><div class="wrap">
+    <a class="brand" id="home-link" href="../index.html">Spatial Weights Critique</a>
+    <nav class="lang" aria-label="Research and language">
+      <a id="lnEn" href="?lang=en" hreflang="en" lang="en" aria-label="English">EN</a>
+      <a id="lnId" href="?lang=id" hreflang="id" lang="id" aria-label="Bahasa Indonesia">ID</a>
+      <a id="lnRep" href="../reports/Columbus_Spatial_Analysis.html">Research report</a>
+    </nav>
+  </div></div>
 </header>
-<div class="tape-wrap" aria-hidden="true"><div class="tape"><span id="tTape">POLICE LINE</span></div></div>
-
-<div class="toolbar" id="toolbar" role="region" aria-label="Weights matrix"><div class="wrap">
+<main>
+  <div id="dashboard-nav">
+  <div class="tab-strip"><div class="wrap" id="dashboard-tabs" role="tablist"></div></div>
+<div class="toolbar" id="toolbar" role="region" aria-label="Weights matrix">
+  <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="matrix-controls"></button>
+  <div class="wrap" id="matrix-controls">
   <div class="field"><span class="lbl" id="famLbl"></span><div class="seg" id="segFam" role="group" aria-labelledby="famLbl"></div></div>
   <div class="field"><label for="selParam" id="paramLbl">Parameter</label><select id="selParam"></select></div>
   <div class="field"><span class="lbl" id="styLbl"></span><div class="seg" id="segStyle" role="group" aria-labelledby="styLbl"></div></div>
@@ -277,8 +328,40 @@ footer{border-top:1px solid var(--line);padding:var(--s5) 0;color:var(--muted);f
   <button class="btn" id="btnRef" type="button"></button>
   <button class="btn primary" id="btnRec" type="button" hidden></button>
 </div></div>
+  </div>
+  <div class="wrap atlas-compare" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare">
+    <p class="kicker">Columbus, Ohio / 1980</p>
+    <h1 id="tTitle"></h1>
+    <p class="lead" id="tLead"></p>
+    <div class="compare-controls">
+      <button type="button" class="btn" id="comp-open"></button>
+      <p class="compare-key" id="comp-key"></p>
+    </div>
+    <div class="compare-grid">
+      <figure class="compare-plate">
+        <figcaption><div><span id="comp-ref-label"></span><h2 id="comp-ref-name"></h2></div><strong id="comp-ref-count"></strong></figcaption>
+        <div class="compare-map" id="comp-ref-map"></div>
+        <p class="compare-stats num" id="comp-ref-stats"></p>
+      </figure>
+      <figure class="compare-plate">
+        <figcaption><div><span id="comp-alt-label"></span><h2 id="comp-alt-name"></h2></div><strong id="comp-alt-count" aria-live="polite"></strong></figcaption>
+        <div class="compare-map" id="comp-alt-map"></div>
+        <p class="compare-stats num" id="comp-alt-stats"></p>
+      </figure>
+    </div>
+    <div class="compare-notes">
+      <div class="legend" id="comp-legend"></div>
+      <p id="comp-status" role="status" hidden></p>
+    </div>
+    <div class="district-details">
+      <div class="field"><label for="comp-region" id="comp-region-label"></label><select id="comp-region"></select></div>
+      <p id="comp-region-detail" class="num" aria-live="polite" aria-atomic="true"></p>
+    </div>
+  </div>
 
-<main><div class="wrap" id="app">
+
+
+<div class="wrap" id="app">
   <div class="state" id="loading">Loading results…</div>
 </div></main>
 
@@ -354,13 +437,24 @@ const fmt = (x, d = 3) => (x == null || Number.isNaN(x)) ? "–" : (x < 0 ? "−
 const fp = p => p < 0.001 ? `< 0${DEC}001` : fmt(p, 4);
 const NUM = x => x.toLocaleString(LANG === "id" ? "id-ID" : "en-US");
 const pct = x => fmt(x, 1) + "%";
+/* same colours as analysis/style.R: one class, one colour, in every map, chart and figure */
 const COL_CONC = { "Positif": "var(--pos)", "Negatif": "var(--neg)", "Tidak signifikan": "var(--ns)" };
-const COL_LISA = { HH: "#EF4444", LL: "#3B82F6", HL: "#FDBA74", LH: "#93C5FD", NS: "#26354F" };
-const LISA_LBL = { HH: "High-High", LL: "Low-Low", HL: "High-Low", LH: "Low-High", NS: L("Tidak signifikan", "Not significant") };
-const COL_AGREE = { "Sepakat: positif": "#F87171", "Sepakat: negatif": "#60A5FA", "Sepakat: tidak signifikan": "#64748B",
-  "Hanya Moran signifikan": "#60A5FA", "Hanya Geary signifikan": "#FB923C", "Arah berlawanan": "#C084FC" };
-const IDX_COL = { "Moran's I": "#60A5FA", "Geary's C": "#FB923C" };
-const SEQ = ["#1E2B44", "#5B3A4A", "#9B3B3B", "#D9483B", "#FB7A4E"]; // CRIME rendah → tinggi
+const NS_FILL = "#E2E0D8";
+const COL_LISA = { HH: "#A3263A", LL: "#24477A", HL: "#E7A9AE", LH: "#A9C1DE", NS: NS_FILL };
+const LISA_LBL = { HH: L("Tinggi–tinggi", "High–high"), LL: L("Rendah–rendah", "Low–low"), HL: L("Tinggi–rendah", "High–low"), LH: L("Rendah–tinggi", "Low–high"), NS: L("Tidak signifikan", "Not significant") };
+const COL_GI = { "Hot spot": COL_LISA.HH, "Cold spot": COL_LISA.LL, "Tidak signifikan": NS_FILL };
+const COL_LC = { "High-High": COL_LISA.HH, "Low-Low": COL_LISA.LL, "Other Positive": "#C99A2E", "Negative": "#6A4C93", "Tidak signifikan": NS_FILL };
+const LC_LBL = { "High-High": L("Tinggi–tinggi", "High-High"), "Low-Low": L("Rendah–rendah", "Low-Low"), "Other Positive": L("Positif lain", "Other positive"), "Negative": L("Negatif", "Negative"), "Tidak signifikan": L("Tidak signifikan", "Not significant") };
+const COL_SIG = ["#17233B", "#4A6A99", "#A9BCD6", NS_FILL];             // smallest FDR p darkest
+const COL_STAB = [NS_FILL, "#C9D3E0", "#8DA2C0", "#4A6A99", "#17233B"]; // significant under more matrices = darker
+const COL_AGREE = { "Sepakat: positif": COL_LISA.HH, "Sepakat: negatif": COL_LISA.LL, "Sepakat: tidak signifikan": NS_FILL,
+  "Hanya Moran signifikan": "#2B7A8B", "Hanya Geary signifikan": "#9A3D24", "Arah berlawanan": "#6A4C93" };
+const IDX_COL = { "Moran's I": "#24477A", "Geary's C": "#9A3D24" };
+const SEQ = ["#E6EBF1", "#BCC9DA", "#8AA1BF", "#55739D", "#24477A"]; // values, low → high
+/* Moran is drawn with circles, Geary with triangles (as in output/png and the report), so the two series differ without colour */
+const mark = (ix, cx, cy, r, attrs) => ix === "Geary's C"
+  ? sv("polygon", { points: [[cx, cy - r * 1.2], [cx + r * 1.1, cy + r * .8], [cx - r * 1.1, cy + r * .8]].map(p => p.map(v => v.toFixed(1)).join(",")).join(" "), ...attrs })
+  : sv("circle", { cx, cy, r, ...attrs });
 
 const tip = $("#tip");
 function showTip(ev, lines) {
@@ -397,16 +491,19 @@ const FAMS = [...new Set(SPECS.map(s => s.family))];
 const g = (v, id, ix) => GLOB.find(r => r.var === v && r.spec_id === id && r.index === ix);
 const specOf = (fam, variant, style) => SPECS.find(s => s.family === fam && s.variant === variant && s.style === style);
 
-const state = { v: "CRIME", fam: "Contiguity", variant: "Queen", style: "W", layer: "fdr", links: false };
+const firstMatrix = SPECS.find(spec => spec.id === "idw1_W");
+const state = { v: "CRIME", fam: firstMatrix.family, variant: firstMatrix.variant, style: firstMatrix.style, layer: "fdr", links: false };
 const curSpec = () => specOf(state.fam, state.variant, state.style);
 
+/* range over the 32 matrices of the number of neighbourhoods of variable `vv` whose 5% FDR class is in `cls` */
+const nrange = (vv, cls) => { const n = SPECS.map(s => LISA.filter(r => r.var === vv && r.spec_id === s.id && cls.includes(r.class_fdr)).length);
+  return `${Math.min(...n)}–${Math.max(...n)}`; };
 /* ---------- teks statis / static text ---------- */
-$("#tKicker").textContent = L("Columbus, Ohio: 49 lingkungan, data tahun 1980", "Columbus, Ohio: 49 neighbourhoods, 1980 data");
-$("#tTitle").textContent = L("Ketika Definisi Tetangga Mengubah Realitas Spasial", "When the Definition of Neighbours Changes Spatial Reality");
-$("#tLead").replaceChildren(...(LANG === "id"
-  ? ["Moran's I dan Geary's C untuk ", el("strong", {}, "CRIME"), " (pencurian rumah dan kendaraan per 1.000 rumah tangga) pada 32 matriks bobot, ditambah simulasi untuk mencari matriks yang paling robust. Semua angka dibaca dari hasil ", el("span", { class: "num" }, "Columbus_Spatial_Analysis.Rmd"), "; halaman ini tidak menghitung ulang statistik apa pun."]
-  : ["Moran's I and Geary's C for ", el("strong", {}, "CRIME"), " (residential burglaries and vehicle thefts per 1,000 households) across 32 spatial weights matrices, plus a simulation that finds the most robust matrix. Every number is read from ", el("span", { class: "num" }, "Columbus_Spatial_Analysis.Rmd"), "; this page does not recompute any statistic."]));
-$("#tTape").textContent = L("POLICE LINE · DILARANG MELINTAS · POLICE LINE · DILARANG MELINTAS", "POLICE LINE · DO NOT CROSS · POLICE LINE · DO NOT CROSS");
+$("#tTitle").textContent = L("Di mana hasil LISA berubah?", "Where do the LISA results change?");
+$("#tLead").textContent = L(
+  "Bandingkan kelas LISA (klaster Tinggi–tinggi dan Rendah–rendah, pencilan Tinggi–rendah dan Rendah–tinggi) pada data pencurian rumah dan kendaraan yang sama dengan dua definisi tetangga.",
+  "Compare LISA classes (High–high and Low–low clusters, High–low and Low–high outliers) for the same residential burglary and vehicle theft data under two definitions of neighbours.");
+$("#home-link").href = "../index.html?lang=" + LANG;
 $("#famLbl").textContent = L("Keluarga bobot", "Weights family");
 $("#styLbl").textContent = L("Skema bobot", "Weighting scheme");
 $("#btnRef").textContent = L("Tampilkan acuan Queen · W", "Show reference Queen · W");
@@ -417,18 +514,28 @@ $("#lnRep").setAttribute("href", "../reports/Columbus_Spatial_Analysis.html?lang
 document.title = L("Columbus · CRIME · Sensitivitas Moran's I dan Geary's C", "Columbus · CRIME · Sensitivity of Moran's I and Geary's C");
 
 /* ---------- toolbar ---------- */
+const filterToggle = $("#filter-toggle");
+filterToggle.addEventListener("click", () => {
+  filterToggle.setAttribute("aria-expanded", String(filterToggle.getAttribute("aria-expanded") !== "true"));
+});
 const selParam = $("#selParam");
+const familyLabel = family => ({ Contiguity: L("Kontiguitas", family), KNN: L("K tetangga terdekat", family),
+      "Distance band": L("Ambang jarak", family), "Inverse distance": L("Invers jarak", family) }[family]);
 const PARAM_LBL = { "Contiguity": L("Tipe kontiguitas", "Contiguity type"), "KNN": L("Jumlah tetangga k", "Number of neighbours k"), "Distance band": L("Ambang jarak d* (satuan peta)", "Distance threshold d* (map units)"), "Inverse distance": L("Fungsi jarak", "Distance function") };
 function buildToolbar() {
+  const focusedGroup = document.activeElement?.closest("#segFam, #segStyle");
+  filterToggle.textContent = L("Matriks", "Matrix") + " · " + LB(curSpec().label);
   const sf = $("#segFam"); sf.replaceChildren(...FAMS.map(f => el("button", { type: "button", "aria-pressed": String(f === state.fam),
-    onclick: () => { state.fam = f; state.variant = SPECS.find(s => s.family === f).variant; render(); } }, f)));
+    onclick: () => { state.fam = f; state.variant = SPECS.find(s => s.family === f).variant; render(); } }, familyLabel(f))));
   $("#paramLbl").textContent = PARAM_LBL[state.fam];
   const variants = [...new Set(SPECS.filter(s => s.family === state.fam).map(s => s.variant))];
   selParam.replaceChildren(...variants.map(v => el("option", { value: v, text: LB(v) })));
   selParam.value = state.variant;
   const styles = SPECS.filter(s => s.family === state.fam && s.variant === state.variant);
+  const styleLabel = s => s.style_label === "Row-standardized" ? L("Standardisasi baris", "Row-standardized") : T(s.style_label);
   $("#segStyle").replaceChildren(...styles.map(s => el("button", { type: "button", "aria-pressed": String(s.style === state.style),
-    title: T(s.style_label), onclick: () => { state.style = s.style; render(); } }, `${s.style} · ${T(s.style_label)}`)));
+    title: styleLabel(s), onclick: () => { state.style = s.style; render(); } }, `${s.style} · ${styleLabel(s)}`)));
+  focusedGroup?.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
 }
 selParam.addEventListener("change", () => { state.variant = selParam.value; render(); });
 $("#btnRef").addEventListener("click", () => { Object.assign(state, { fam: "Contiguity", variant: "Queen", style: "W" }); render(); });
@@ -438,28 +545,29 @@ const selectSpec = (id, v) => { const s = SPECS.find(x => x.id === id); Object.a
 function skeleton() {
   $("#app").replaceChildren(
     el("section", { id: "hasil", "aria-labelledby": "h-hasil" },
-      el("div", { class: "sec-head" }, el("h2", { id: "h-hasil" }, L("Hasil pada matriks terpilih", "Results for the selected matrix")), el("p", { class: "muted", id: "cfgText" })),
+      el("div", { class: "sec-head" }, el("h2", { id: "h-hasil", tabindex: "-1" }, L("Hasil pada matriks terpilih", "Results for the selected matrix")), el("p", { class: "muted", id: "cfgText" })),
       el("div", { class: "result", id: "result" })),
     el("section", { id: "peta", "aria-labelledby": "h-peta" },
-      el("div", { class: "sec-head" }, el("h2", { id: "h-peta" }, L("Peta CRIME dan klaster lokal", "CRIME map and local clusters")),
+      el("div", { class: "sec-head" }, el("h2", { id: "h-peta" }, L("Peta CRIME, klaster, dan pencilan lokal", "CRIME map, local clusters and outliers")),
         el("p", { class: "muted" }, L("LISA diuji dengan permutasi bersyarat 9.999 iterasi; koreksi uji berganda Benjamini–Hochberg (FDR) atas 49 wilayah.", "LISA is tested with 9,999 conditional permutations; Benjamini–Hochberg (FDR) multiple-testing correction across the 49 regions."))),
-      el("div", { class: "maps" },
-        el("div", { class: "panel map" }, el("div", { class: "map-head" }, el("h3", { id: "mapValTitle" }),
-            el("label", { class: "check" }, el("input", { type: "checkbox", id: "chkLinks", onchange: e => { state.links = e.target.checked; drawMaps(); } }), L("Tampilkan link tetangga", "Show neighbour links"))),
-          el("div", { id: "mapVal" }), el("div", { class: "legend", id: "legVal" })),
-        el("div", { class: "panel map" }, el("div", { class: "map-head" }, el("h3", { id: "mapLisaTitle" }),
+      el("div", { class: "compare-grid analysis-maps" },
+        el("figure", { class: "compare-plate" }, el("figcaption", {}, el("div", {}, el("span", {}, L("Data 1980 · Lima kuintil", "1980 data · Five quintiles")), el("h3", { id: "mapValTitle" })),
+            el("label", { class: "check" }, el("input", { type: "checkbox", id: "chkLinks", onchange: e => { state.links = e.target.checked; drawMaps(); } }), L("Tampilkan garis ketetanggaan", "Show neighbour links"))),
+          el("div", { class: "compare-map", id: "mapVal" }), el("div", { class: "legend map-key", id: "legVal" })),
+        el("figure", { class: "compare-plate" }, el("figcaption", {}, el("div", {}, el("span", {}, L("Analisis lokal", "Local analysis")), el("h3", { id: "mapLisaTitle" })),
             el("div", { class: "field" }, el("label", { for: "selLayer", class: "sr" }, L("Lapisan peta lokal", "Local map layer")),
               el("select", { id: "selLayer", onchange: e => { state.layer = e.target.value; drawMaps(); } },
                 el("option", { value: "fdr" }, "LISA, FDR 5%"), el("option", { value: "raw" }, L("LISA, p mentah < 0,05", "LISA, raw p < 0.05")),
                 el("option", { value: "sig" }, L("Signifikansi LISA (FDR)", "LISA significance (FDR)")), el("option", { value: "gi" }, L("Getis–Ord Gi* (selalu Queen)", "Getis–Ord Gi* (always Queen)")),
-                el("option", { value: "lc" }, L("Local Geary (selalu Queen · W)", "Local Geary (always Queen · W)"))))),
-          el("div", { id: "mapLisa" }), el("div", { class: "legend", id: "legLisa" })))),
+                el("option", { value: "lc" }, L("Local Geary (selalu Queen · W)", "Local Geary (always Queen · W)")),
+                el("option", { value: "stab" }, L("Stabilitas LISA di 32 matriks", "LISA stability across 32 matrices"))))),
+          el("div", { class: "compare-map", id: "mapLisa" }), el("div", { class: "legend map-key", id: "legLisa" })))),
     el("section", { id: "sensitivitas", "aria-labelledby": "h-sens" },
       el("div", { class: "sec-head" }, el("h2", { id: "h-sens" }, L("Sensitivitas pada data CRIME yang asli", "Sensitivity on the original CRIME data")),
-        el("p", { class: "muted" }, L("Skor-z permutasi berorientasi: z > 0 berarti autokorelasi positif untuk kedua indeks. Pita gelap menandai |z| < 1,96. Titik kosong berarti tidak signifikan (p dua sisi ≥ 0,05).", "Oriented permutation z-scores: z > 0 means positive autocorrelation for both indices. The dark band marks |z| < 1.96. Hollow points are not significant (two-sided p ≥ 0.05)."))),
+        el("p", { class: "muted" }, L("Skor-z permutasi berorientasi: z > 0 berarti autokorelasi positif untuk kedua indeks. Pita abu-abu menandai |z| < 1,96. Lingkaran untuk Moran, segitiga untuk Geary; titik kosong berarti tidak signifikan (p dua sisi ≥ 0,05).", "Oriented permutation z-scores: z > 0 means positive autocorrelation for both indices. The grey band marks |z| < 1.96. Circles are Moran, triangles Geary; hollow points are not significant (two-sided p ≥ 0.05)."))),
       el("div", { class: "charts" },
         el("div", { class: "panel chart" }, el("h3", {}, L("Kurva sensitivitas: jumlah tetangga dan ambang jarak", "Sensitivity curves: number of neighbours and distance threshold")), el("div", { class: "keyline", id: "curveKey" }), el("div", { id: "curveK" }), el("div", { id: "curveD", style: "margin-top:16px" })),
-        el("div", { class: "panel chart" }, el("h3", {}, L("z pada 32 spesifikasi (klik label untuk memilih)", "z across 32 specifications (click a label to select)")), el("div", { class: "keyline", id: "dotKey" }), el("div", { class: "dotplot", id: "dotplot" })))),
+        el("div", { class: "panel chart" }, el("h3", {}, L("z pada 32 spesifikasi", "z across 32 specifications")), el("div", { class: "keyline", id: "dotKey" }), el("div", { class: "dotplot", id: "dotplot" })))),
     el("section", { id: "tabel", "aria-labelledby": "h-tabel" },
       el("div", { class: "sec-head" }, el("h2", { id: "h-tabel" }), el("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
         el("button", { class: "btn", type: "button", onclick: exportTable }, L("Unduh tabel perbandingan (CSV)", "Download comparison table (CSV)")),
@@ -491,6 +599,7 @@ function idxCard(ix, r) {
       r.borderline ? L(" · di batas α (IK Monte Carlo memuat 0,05)", " · borderline at α (Monte Carlo CI contains 0.05)") : ""));
 }
 function drawResult() {
+  const oldStats = [...document.querySelectorAll("#result .big")].map(node => node.textContent);
   const s = curSpec(), m = g(state.v, s.id, "Moran's I"), c = g(state.v, s.id, "Geary's C");
   const a = AGREE.find(r => r.var === state.v && r.spec_id === s.id);
   $("#cfgText").textContent = `${state.v} (${T(M.var_desc[state.v])}) · ${s.family}, ${LB(s.variant)}, ${T(s.style_label)}`;
@@ -509,68 +618,158 @@ function drawResult() {
           ...[[L("Total link", "Total links"), s["Total link"], 0], [L("Rata-rata tetangga", "Mean neighbours"), s["Rata-rata tetangga"], 2], [L("Min–maks tetangga", "Min–max neighbours"), `${s["Min tetangga"]}–${s["Maks tetangga"]}`],
               [L("Terisolasi", "Isolates"), s["Terisolasi"], 0], ["S₀", s.S0, 2], [L("Matriks simetris", "Symmetric matrix"), s["Matriks simetris"] ? L("Ya", "Yes") : L("Tidak", "No")]]
             .map(([k, v, d]) => el("div", {}, el("span", { class: "muted" }, k), el("b", {}, typeof v === "number" ? fmt(v, d) : v)))))));
+  if ($("#result").offsetWidth) $("#result").querySelectorAll(".big").forEach((node, i) => {
+    if (oldStats[i] && node.textContent !== oldStats[i]) motion(node, [
+      { transform: "translateY(5px)", color: "var(--accent)" }, { transform: "none", color: "var(--text)" }
+    ]);
+  });
+}
+
+/* Animate selection indicators independently of the text and values beneath them. */
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function motion(node, frames, duration = 340) {
+  if (reducedMotion.matches || !node.animate) return;
+  return node.animate(frames, { id: "dashboard-motion", duration, easing: "cubic-bezier(.22,.7,.22,1)" });
+}
+reducedMotion.addEventListener("change", () => {
+  if (reducedMotion.matches) document.getAnimations().filter(a => a.id === "dashboard-motion").forEach(a => a.cancel());
+});
+const activeIndicators = [
+  "#segFam [aria-pressed=true]", "#segStyle [aria-pressed=true]", "#segIx [aria-pressed=true]",
+  "#segLv [aria-pressed=true]", "#dotplot .row.sel", "#bars .brow.sel", "#pheat .rl.sel", "#pheat .c.sel"
+];
+function indicatorPositions(selector) {
+  if (reducedMotion.matches) return [];
+  return [...document.querySelectorAll(selector)].map(node => {
+    const marker = node.querySelector(".moving-highlight");
+    const box = node.getBoundingClientRect();
+    const transform = marker ? new DOMMatrixReadOnly(getComputedStyle(marker).transform) : null;
+    const group = (node.closest("thead") || node.parentElement).getBoundingClientRect();
+    return { left: box.left - group.left + (transform?.e || 0),
+      top: box.top - group.top + (transform?.f || 0), width: box.width * (transform?.a || 1) };
+  });
+}
+function moveIndicator(selector, previous) {
+  if (!previous.length || reducedMotion.matches) return;
+  document.querySelectorAll(selector).forEach((node, i) => {
+    const old = previous[i], box = node.getBoundingClientRect();
+    if (!old?.width || !box.width) return;
+    const parent = (node.closest("thead") || node.parentElement).getBoundingClientRect();
+    const dx = old.left - (box.left - parent.left), dy = old.top - (box.top - parent.top);
+    if (Math.abs(dx) + Math.abs(dy) < 1) return;
+    const scope = node.closest('[role="tablist"], thead') || node;
+    scope.querySelector(".moving-highlight")?.remove();
+    const marker = el("span", { class: "moving-highlight", "aria-hidden": "true" });
+    node.append(marker);
+    const anim = motion(marker, [
+      { transform: "translate(" + dx + "px," + dy + "px) scaleX(" + old.width / box.width + ")" },
+      { transform: "none" }
+    ]);
+    if (anim) anim.finished.catch(() => {}).then(() => marker.remove());
+    else marker.remove();
+  });
+}
+function updateHighlights(update) {
+  const before = activeIndicators.map(indicatorPositions);
+  update();
+  activeIndicators.forEach((selector, i) => moveIndicator(selector, before[i]));
 }
 
 /* ---------- maps ---------- */
 const allPts = REG.rings.flat(2);
 const BB = { x0: Math.min(...allPts.map(p => p[0])), x1: Math.max(...allPts.map(p => p[0])), y0: Math.min(...allPts.map(p => p[1])), y1: Math.max(...allPts.map(p => p[1])) };
-function mapSvg(fillOf, tipOf, edges) {
+function createMap(host) {
   const W = 600, H = Math.round(W * (BB.y1 - BB.y0) / (BB.x1 - BB.x0)), pad = 6;
   const k = (W - 2 * pad) / (BB.x1 - BB.x0), X = x => pad + (x - BB.x0) * k, Y = y => pad + (BB.y1 - y) * k;
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H + 2 * pad}`, role: "img" });
-  REG.rings.forEach((rs, i) => {
+  let tooltip;
+  const marks = REG.rings.map((rs, i) => {
     const d = rs.map(r => "M" + r.map(p => X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("L") + "Z").join("");
-    const p = sv("path", { d, class: "reg", fill: fillOf(i), "fill-rule": "evenodd" });
-    bindTip(p, () => tipOf(i)); svg.append(p);
+    const p = sv("path", { d, class: "reg", "fill-rule": "evenodd" });
+    bindTip(p, () => tooltip(i));
+    svg.append(p);
+    return p;
   });
-  if (edges) {
-    const c = REG.centroid, gl = sv("g", { stroke: "#FACC15", "stroke-opacity": edges.length > 800 ? .18 : .7, "stroke-width": .8, "pointer-events": "none" });
-    edges.forEach(([a, b]) => gl.append(sv("line", { x1: X(c[a - 1][0]), y1: Y(c[a - 1][1]), x2: X(c[b - 1][0]), y2: Y(c[b - 1][1]) })));
-    c.forEach(p => gl.append(sv("circle", { cx: X(p[0]), cy: Y(p[1]), r: 1.8, fill: "#FACC15", stroke: "none" })));
-    svg.append(gl);
+  host.append(svg);
+
+  function paint(fillOf, tipOf) {
+    tooltip = tipOf;
+    marks.forEach((mark, i) => mark.setAttribute("fill", fillOf(i)));
   }
-  return svg;
+  let previousEdges, overlay;
+  function setEdges(edges) {
+    if (previousEdges === edges) return;
+    previousEdges = edges;
+    overlay?.remove();
+    if (!edges) return;
+    overlay = sv("g", { class: "neighbour-links", stroke: "var(--moran)", "stroke-opacity": edges.length > 800 ? .18 : .7, "stroke-width": .8, "pointer-events": "none" });
+    const c = REG.centroid;
+    edges.forEach(([a, b]) => overlay.append(sv("line", { x1: X(c[a - 1][0]), y1: Y(c[a - 1][1]), x2: X(c[b - 1][0]), y2: Y(c[b - 1][1]) })));
+    c.forEach(p => overlay.append(sv("circle", { cx: X(p[0]), cy: Y(p[1]), r: 1.8, fill: "var(--text)", stroke: "none" })));
+    svg.append(overlay);
+  }
+  return { svg, marks, paint, setEdges };
 }
 function quantBreaks(v) {
   const s = [...v].sort((a, b) => a - b), q = p => { const h = (s.length - 1) * p, lo = Math.floor(h); return s[lo] + (h - lo) * ((s[lo + 1] ?? s[lo]) - s[lo]); };
   return [0, .2, .4, .6, .8, 1].map(q);
 }
-function legend(node, items) { node.replaceChildren(...items.map(([c, t]) => el("span", {}, el("span", { class: "sw", style: `background:${c}` }), t))); }
+function legend(node, items, title) { node.replaceChildren(...(title ? [el("b", { class: "lt" }, title)] : []), ...items.map(([c, t]) => el("span", {}, el("span", { class: "sw", style: `background:${c}` }), t))); }
+let rateMap, localMap;
 function drawMaps() {
   const s = curSpec(), v = state.v, vals = VAL[v], br = quantBreaks(vals);
   const cls = x => Math.min(4, br.slice(1).findIndex(b => x <= b + 1e-12));
   const LL = LISA.filter(r => r.spec_id === s.id && r.var === v).sort((a, b) => a.POLYID - b.POLYID);
   const tipBase = i => [`POLYID ${REG.POLYID[i]}`, `${v} = ${fmt(vals[i], 3)}`, `LISA Iᵢ = ${fmt(LL[i].Ii, 3)} · ${L("kuadran", "quadrant")} ${LL[i].quad}`, `p = ${fp(LL[i].p)} · p FDR = ${fp(LL[i].p_fdr)}`];
-  $("#mapValTitle").textContent = L(`${v}: kuantil (5 kelas)`, `${v}: quintiles (5 classes)`);
-  $("#mapVal").replaceChildren(mapSvg(i => SEQ[cls(vals[i])], tipBase, state.links ? DATA.edges[s.id] : null));
-  legend($("#legVal"), SEQ.map((c, i) => [c, `${fmt(br[i], 2)} – ${fmt(br[i + 1], 2)}`]));
+  $("#mapValTitle").textContent = L("Tingkat pencurian", "Theft rate");
+  if (!rateMap) {
+    rateMap = createMap($("#mapVal"));
+    localMap = createMap($("#mapLisa"));
+    rateMap.svg.setAttribute("aria-labelledby", "mapValTitle");
+    localMap.svg.setAttribute("aria-labelledby", "mapLisaTitle");
+  }
+  rateMap.paint(i => SEQ[cls(vals[i])], tipBase);
+  rateMap.setEdges(state.links ? DATA.edges[s.id] : null);
+  legend($("#legVal"), SEQ.map((c, i) => [c, `${fmt(br[i], 2)} – ${fmt(br[i + 1], 2)}`]), L("Pencurian rumah dan kendaraan per 1.000 rumah tangga", "Residential burglaries and vehicle thefts per 1,000 households"));
   const lay = state.layer;
-  let fill, items, title;
+  let fill, items, title, ltitle;
   if (lay === "fdr" || lay === "raw") {
     const key = lay === "fdr" ? "class_fdr" : "class_raw";
     fill = i => COL_LISA[LL[i][key]];
     const n = k => LL.filter(r => r[key] === k).length;
     items = Object.keys(COL_LISA).map(k => [COL_LISA[k], `${LISA_LBL[k]} (${n(k)})`]);
-    title = `${L("Klaster LISA", "LISA clusters")} · ${LB(s.label)} · ${lay === "fdr" ? "FDR 5%" : L("p mentah", "raw p")}`;
+    title = `${L("Kelas LISA: klaster dan pencilan", "LISA classes: clusters and outliers")} · ${LB(s.label)} · ${lay === "fdr" ? "FDR 5%" : L("p mentah", "raw p")}`;
+    ltitle = L("Kelas LISA", "LISA class");
   } else if (lay === "sig") {
-    const band = p => p <= .001 ? 0 : p <= .01 ? 1 : p <= .05 ? 2 : 3, C = ["#4ADE80", "#22A35A", "#14532D", "#26354F"], TT = [`p ≤ 0${DEC}001`, `p ≤ 0${DEC}01`, `p ≤ 0${DEC}05`, L("Tidak signifikan", "Not significant")];
+    const band = p => p <= .001 ? 0 : p <= .01 ? 1 : p <= .05 ? 2 : 3, C = COL_SIG, TT = [`p ≤ 0${DEC}001`, `p ≤ 0${DEC}01`, `p ≤ 0${DEC}05`, L("Tidak signifikan", "Not significant")];
     fill = i => C[band(LL[i].p_fdr)];
     items = C.map((c, k) => [c, `${TT[k]} (${LL.filter(r => band(r.p_fdr) === k).length})`]);
     title = `${L("Signifikansi LISA (p FDR)", "LISA significance (FDR p)")} · ${LB(s.label)}`;
+    ltitle = L("p setelah FDR; makin gelap, makin kecil", "p after FDR; darker is smaller");
+  } else if (lay === "stab") {
+    const nW = SPECS.length, K = REG.POLYID.map(id => LISA.filter(r => r.var === v && r.POLYID === id && r.class_fdr !== "NS").length);
+    const cut = k => k === 0 ? 0 : k <= 8 ? 1 : k <= 16 ? 2 : k < nW ? 3 : 4;
+    const TT = [L("Tidak pernah", "Never"), L("1–8 matriks", "1–8 matrices"), L("9–16 matriks", "9–16 matrices"), L(`17–${nW - 1} matriks`, `17–${nW - 1} matrices`), L(`Semua ${nW}`, `All ${nW}`)];
+    fill = i => COL_STAB[cut(K[i])];
+    items = COL_STAB.map((c, k) => [c, `${TT[k]} (${K.filter(x => cut(x) === k).length})`]);
+    title = L(`Stabilitas: signifikan (FDR 5%) pada berapa dari ${nW} matriks`, `Stability: significant (5% FDR) under how many of ${nW} matrices`);
+    ltitle = L("Jumlah matriks", "Number of matrices");
+    var tipOf = i => [`POLYID ${REG.POLYID[i]}`, `${v} = ${fmt(vals[i], 3)}`, L(`Signifikan pada ${K[i]} dari ${nW} matriks`, `Significant under ${K[i]} of ${nW} matrices`)];
   } else {
     const S = SUP.filter(r => r.var === v).sort((a, b) => a.POLYID - b.POLYID);
     const key = lay === "gi" ? "Gi_class" : "localC_class";
-    const C = lay === "gi" ? { "Hot spot": "#EF4444", "Cold spot": "#3B82F6", "Tidak signifikan": "#26354F" }
-      : { "High-High": "#EF4444", "Low-Low": "#3B82F6", "Other Positive": "#FBBF24", "Negative": "#C084FC", "Tidak signifikan": "#26354F" };
+    const C = lay === "gi" ? COL_GI : COL_LC;
+    ltitle = lay === "gi" ? L("Kelas Gi*", "Gi* class") : L("Kelas Local Geary", "Local Geary class");
     fill = i => C[S[i][key]];
-    items = Object.keys(C).map(k => [C[k], `${T(k)} (${S.filter(r => r[key] === k).length})`]);
+    const lbl = lay === "lc" ? (k => LC_LBL[k] ?? T(k)) : T;
+    items = Object.keys(C).map(k => [C[k], `${lbl(k)} (${S.filter(r => r[key] === k).length})`]);
     title = lay === "gi" ? L("Getis–Ord Gi* · Queen + diri sendiri · FDR 5%", "Getis–Ord Gi* · Queen + self · FDR 5%") : "Local Geary · Queen · W · FDR 5%";
-    const tb = tipBase; var tipOf = i => [...tb(i).slice(0, 2), lay === "gi" ? `Gi* z = ${fmt(S[i].Gi_star_z, 3)} · p FDR = ${fp(S[i].Gi_p_fdr)}` : `Cᵢ = ${fmt(S[i].localC, 3)} · p FDR = ${fp(S[i].localC_p_fdr)}`, T(S[i][key])];
+    const tb = tipBase; var tipOf = i => [...tb(i).slice(0, 2), lay === "gi" ? `Gi* z = ${fmt(S[i].Gi_star_z, 3)} · p FDR = ${fp(S[i].Gi_p_fdr)}` : `Cᵢ = ${fmt(S[i].localC, 3)} · p FDR = ${fp(S[i].localC_p_fdr)}`, lbl(S[i][key])];
   }
   $("#mapLisaTitle").textContent = title;
   $("#selLayer").value = lay;
-  $("#mapLisa").replaceChildren(mapSvg(fill, tipOf || (i => [...tipBase(i), LISA_LBL[LL[i][lay === "raw" ? "class_raw" : "class_fdr"]]]), null));
-  legend($("#legLisa"), items);
+  localMap.paint(fill, tipOf || (i => [...tipBase(i), LISA_LBL[LL[i][lay === "raw" ? "class_raw" : "class_fdr"]]]));
+  legend($("#legLisa"), items, ltitle);
 }
 
 /* ---------- charts ---------- */
@@ -586,29 +785,37 @@ function lineChart(node, { title, xs, series, xlab, selX }) {
   const y0 = Math.min(...ys), y1 = Math.max(...ys), yp = (y1 - y0) * .08;
   const X = x => m.l + (x - xs[0]) / (xs[xs.length - 1] - xs[0]) * (W - m.l - m.r), Y = y => m.t + (y1 + yp - y) / (y1 - y0 + 2 * yp) * (H - m.t - m.b);
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": title });
-  const tt = sv("text", { x: m.l, y: 13, "font-size": 12, "font-weight": 600, fill: "#E6EBF3" }); tt.textContent = title; svg.append(tt);
-  svg.append(sv("rect", { x: m.l, width: W - m.l - m.r, y: Y(1.96), height: Y(-1.96) - Y(1.96), fill: "#16223A" }));
+  const tt = sv("text", { x: m.l, y: 13, "font-size": 12, "font-weight": 600, fill: "var(--text)" }); tt.textContent = title; svg.append(tt);
+  svg.append(sv("rect", { x: m.l, width: W - m.l - m.r, y: Y(1.96), height: Y(-1.96) - Y(1.96), fill: "var(--surface-2)" }));
   const ax = sv("g", { class: "axis" });
   nice(y0 - yp, y1 + yp).forEach(t => { ax.append(sv("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), class: "gridline" })); const tx = sv("text", { x: m.l - 6, y: Y(t) + 4, "text-anchor": "end" }); tx.textContent = fmt(t, Math.abs(t) < 10 && t % 1 ? 1 : 0); ax.append(tx); });
   xs.forEach(x => { const tx = sv("text", { x: X(x), y: H - m.b + 16, "text-anchor": "middle" }); tx.textContent = Number.isInteger(x) ? x : fmt(x, 2); ax.append(tx); });
   const xl = sv("text", { x: (m.l + W - m.r) / 2, y: H - 3, "text-anchor": "middle" }); xl.textContent = xlab; ax.append(xl);
-  ax.append(sv("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: "#4A5D7E" }));
+  ax.append(sv("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: "var(--faint)" }));
   svg.append(ax);
-  if (selX != null) svg.append(sv("line", { x1: X(selX), x2: X(selX), y1: m.t, y2: H - m.b, stroke: "#FACC15", "stroke-width": 1.5, "stroke-dasharray": "3 3" }));
+  if (selX != null) svg.append(sv("line", { class: "curve-selection", x1: X(selX), x2: X(selX), y1: m.t, y2: H - m.b, stroke: "var(--accent)", "stroke-width": 1.5, "stroke-dasharray": "3 3" }));
   series.forEach(s => {
     svg.append(sv("path", { d: "M" + s.pts.map(p => X(p.x) + "," + Y(p.y)).join("L"), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-dasharray": s.dash || null }));
-    s.pts.forEach(p => { const c = sv("circle", { cx: X(p.x), cy: Y(p.y), r: 4.2, fill: p.sig ? s.color : "#111B2E", stroke: s.color, "stroke-width": 1.8 }); bindTip(c, () => p.tip); svg.append(c); });
+    s.pts.forEach(p => { const c = mark(s.ix, X(p.x), Y(p.y), 4.2, { fill: p.sig ? s.color : "var(--surface)", stroke: s.color, "stroke-width": 1.8 }); bindTip(c, () => p.tip); svg.append(c); });
   });
+  const previousGuide = node.querySelector(".curve-selection");
+  const oldX = previousGuide?.getAttribute("x1");
   node.replaceChildren(svg);
+  const guide = svg.querySelector(".curve-selection");
+  if (guide && node.offsetWidth) {
+    const dx = Number(oldX) - Number(guide.getAttribute("x1"));
+    if (oldX == null) motion(guide, [{ opacity: 0 }, { opacity: 1 }]);
+    else if (dx) motion(guide, [{ transform: "translateX(" + dx + "px)" }, { transform: "none" }]);
+  }
 }
 function drawCurves() {
   const s = curSpec(), v = state.v;
   $("#curveKey").replaceChildren(...[["Moran's I", "", "B"], ["Moran's I", "5 4", "W"], ["Geary's C", "", "B"], ["Geary's C", "5 4", "W"]].map(([ix, d, st]) => {
-    const k = sv("svg", { width: 26, height: 10 }); k.append(sv("line", { x1: 0, x2: 26, y1: 5, y2: 5, stroke: IDX_COL[ix], "stroke-width": 2, "stroke-dasharray": d || null }));
+    const k = sv("svg", { width: 30, height: 12 }); k.append(sv("line", { x1: 0, x2: 30, y1: 6, y2: 6, stroke: IDX_COL[ix], "stroke-width": 2, "stroke-dasharray": d || null }), mark(ix, 15, 6, 4, { fill: IDX_COL[ix], stroke: IDX_COL[ix] }));
     return el("span", {}, k, `${ix} · ${st}`);
   }));
   const mk = fam => { const sp = SPECS.filter(x => x.family === fam); const xs = [...new Set(sp.map(x => x.param))].sort((a, b) => a - b);
-    const series = ["Moran's I", "Geary's C"].flatMap(ix => ["B", "W"].map(st => ({ color: IDX_COL[ix], dash: st === "W" ? "5 4" : null,
+    const series = ["Moran's I", "Geary's C"].flatMap(ix => ["B", "W"].map(st => ({ ix, color: IDX_COL[ix], dash: st === "W" ? "5 4" : null,
       pts: xs.map(x => { const id = sp.find(q => q.param === x && q.style === st).id, r = g(v, id, ix);
         return { x, y: r.z_perm, sig: r.signif, tip: [`${ix} · ${LB(r.label)}`, `${L("nilai", "value")} = ${fmt(r.stat, 4)} · z = ${fmt(r.z_perm, 2)}`, `p = ${fp(r.p_two)} · ${T(r.conclusion)}`] }; }) })));
     return { xs, series, selX: s.family === fam ? s.param : null }; };
@@ -620,8 +827,9 @@ function drawDots() {
   const s = curSpec(), v = state.v, node = $("#dotplot");
   const zs = GLOB.filter(r => r.var === v).map(r => r.z_perm).concat([-1.96, 1.96, 0]);
   const lo = Math.min(...zs), hi = Math.max(...zs), pad = (hi - lo) * .06;
-  $("#dotKey").replaceChildren(...Object.entries(IDX_COL).map(([ix, c]) => el("span", {}, el("span", { class: "dot", style: `background:${c}` }), ix)),
-    el("span", {}, el("span", { class: "dot", style: "background:#111B2E;border:2px solid #A3B1C6" }), L("tidak signifikan", "not significant")));
+  const key = (ix, filled) => { const k = sv("svg", { width: 14, height: 14 }); k.append(mark(ix, 7, 7, 4.5, { fill: filled ? IDX_COL[ix] : "var(--surface)", stroke: IDX_COL[ix], "stroke-width": 2 })); return k; };
+  $("#dotKey").replaceChildren(...Object.keys(IDX_COL).map(ix => el("span", {}, key(ix, true), ix)),
+    el("span", {}, key("Moran's I", false), key("Geary's C", false), L("tidak signifikan (kosong)", "not significant (hollow)")));
   const W = 400, H = 24, X = z => 8 + (z - lo + pad) / (hi - lo + 2 * pad) * (W - 16);
   const axis = sv("svg", { viewBox: `0 0 ${W} 18`, preserveAspectRatio: "none", class: "axis", height: 18 });
   nice(lo - pad, hi + pad, 6).forEach(t => { const tx = sv("text", { x: X(t), y: 13, "text-anchor": "middle" }); tx.textContent = fmt(t, 0); axis.append(tx); });
@@ -630,11 +838,11 @@ function drawDots() {
   SPECS.forEach(sp => {
     if (sp.family !== fam) { fam = sp.family; out.push(el("div", { class: "fam" }, fam)); }
     const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", height: H, style: "width:100%" });
-    svg.append(sv("rect", { x: X(-1.96), width: X(1.96) - X(-1.96), y: 0, height: H, fill: "#16223A" }), sv("line", { x1: X(0), x2: X(0), y1: 0, y2: H, stroke: "#4A5D7Eaf" }));
+    svg.append(sv("rect", { x: X(-1.96), width: X(1.96) - X(-1.96), y: 0, height: H, fill: "var(--surface-2)" }), sv("line", { x1: X(0), x2: X(0), y1: 0, y2: H, stroke: "var(--faint)" }));
     ["Moran's I", "Geary's C"].forEach((ix, k) => { const r = g(v, sp.id, ix);
-      const c = sv("circle", { cx: X(r.z_perm), cy: 8 + k * 8, r: 4.5, fill: r.signif ? IDX_COL[ix] : "#111B2E", stroke: IDX_COL[ix], "stroke-width": 2 });
+      const c = mark(ix, X(r.z_perm), 8 + k * 8, 4.5, { fill: r.signif ? IDX_COL[ix] : "var(--surface)", stroke: IDX_COL[ix], "stroke-width": 2 });
       bindTip(c, () => [`${ix} · ${LB(sp.label)}`, `z = ${fmt(r.z_perm, 2)} · p = ${fp(r.p_two)}`, T(r.conclusion)]); svg.append(c); });
-    out.push(el("div", { class: "row" + (sp.id === s.id ? " sel" : "") }, el("button", { type: "button", "aria-pressed": String(sp.id === s.id), onclick: () => selectSpec(sp.id) }, LB(sp.label)), svg));
+    out.push(el("div", { class: "row" + (sp.id === s.id ? " sel" : "") }, el("span", { class: "spec-label" }, LB(sp.label)), svg));
   });
   node.replaceChildren(...out);
 }
@@ -642,6 +850,8 @@ function drawDots() {
 /* ---------- heatmap ---------- */
 /* ---------- comparison table ---------- */
 let cmpRows = [];
+const tableSort = { column: null, direction: 1 };
+const matrixNames = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
 function drawTable() {
   const v = state.v, s = curSpec();
   $("#h-tabel").textContent = L("Tabel 32 matriks bobot untuk CRIME", "All 32 weights matrices for CRIME");
@@ -653,14 +863,62 @@ function drawTable() {
       ...(SIM ? (c => ({ "Kelas simulasi (Moran)": c.cls_I, "Penyesalan maks (Moran)": c.reg_I, "Kelas simulasi (Geary)": c.cls_C, "Penyesalan maks (Geary)": c.reg_C }))(RC.find(r => r.W === sp.id)) : {}) }; });
   const cols = [["Spesifikasi", "l"], ["Skema", "l"], ["Link", 0], ["Moran I", 4], ["z Moran", 2], ["p Moran", "p"], ["Geary C", 4], ["z Geary", 2], ["p Geary", "p"], ["Kesepakatan", "agree"], ["LISA sig. (FDR)", 0], ["% kelas LISA = acuan", 1], ...(SIM ? [["Kelas simulasi (Moran)", "cls"], ["Penyesalan maks (Moran)", 3]] : [])];
   const conc = x => el("span", { class: "pill" }, el("span", { class: "dot", style: `background:${COL_CONC[x]}` }), "");
-  $("#cmp").replaceChildren(el("thead", {}, el("tr", {}, cols.map(([c, t]) => el("th", { class: t === "l" || t === "agree" || t === "cls" ? "l" : "", scope: "col" }, CH(c))))),
-    el("tbody", {}, cmpRows.map(r => el("tr", { class: r.spec_id === s.id ? "sel" : "" }, cols.map(([c, t]) => {
+  // Sort the underlying numbers at full precision; formatted cells may appear tied.
+  const visibleRows = [...cmpRows]; // CSV keeps the original specification order.
+  const column = tableSort.column;
+  if (column) {
+    visibleRows.sort((a, b) => {
+      const x = a[column], y = b[column];
+      if (x == null || y == null) return Number(x == null) - Number(y == null);
+      const order = typeof x === "number" ? x - y : matrixNames.compare(T(x), T(y));
+      return order * tableSort.direction;
+    });
+  }
+  const selected = visibleRows.findIndex(row => row.spec_id === s.id);
+  visibleRows.unshift(...visibleRows.splice(selected, 1));
+
+  const table = $("#cmp");
+  if (!table.tHead) {
+    const head = table.createTHead().insertRow();
+    for (const [key, format] of cols) {
+      const button = el("button", { type: "button", onclick: () => {
+        const selectedHeader = "#cmp th[aria-sort] button";
+        const before = indicatorPositions(selectedHeader);
+        tableSort.direction = tableSort.column === key ? -tableSort.direction : 1;
+        tableSort.column = key;
+        drawTable();
+        moveIndicator(selectedHeader, before);
+        motion(button.querySelector(".sort-arrow"), [{ opacity: .4 }, { opacity: 1 }]);
+      } }, CH(key), el("span", { class: "sort-arrow", "aria-hidden": "true" }));
+      head.append(el("th", { scope: "col", class: ["l", "agree", "cls"].includes(format) ? "l" : "" }, button));
+    }
+  }
+  cols.forEach(([key], i) => {
+    const th = table.tHead.rows[0].cells[i];
+    if (key === column) th.setAttribute("aria-sort", tableSort.direction === 1 ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+  });
+  const body = table.tBodies[0] || table.createTBody();
+  const oldY = new Map();
+  if (table.offsetWidth && !reducedMotion.matches) {
+    for (const row of body.rows) oldY.set(row.dataset.spec, row.getBoundingClientRect().top);
+  }
+  body.replaceChildren(...visibleRows.map(r => el("tr", { class: r.spec_id === s.id ? "sel" : "", "data-spec": r.spec_id }, cols.map(([c, t]) => {
       const v = r[c];
+      if (c === "Spesifikasi" && r.spec_id === s.id) return el("td", { class: "l" }, v,
+        el("small", { class: "pinned-label" }, L("Terpilih", "Selected")));
       if (t === "l") return el("td", { class: "l" }, v);
       if (t === "cls") return el("td", { class: "l" }, badge(v, T(v)));
       if (t === "agree") return el("td", { class: "l" }, el("span", { class: "pill" }, el("span", { class: "sw", style: `background:${COL_AGREE[v]}` }), T(v)));
       if (t === "p") return el("td", { class: "num" }, conc(r[c === "p Moran" ? "Kesimpulan Moran" : "Kesimpulan Geary"]), " ", fp(v));
-      return el("td", { class: "num" }, fmt(v, t)); })))));
+      return el("td", { class: "num" }, fmt(v, t)); }))));
+  // Match by matrix ID, including when the previous transition is still in flight.
+  if (oldY.size) {
+    const movements = [...body.rows].map(row => [row, oldY.get(row.dataset.spec) - row.getBoundingClientRect().top]);
+    for (const [row, dy] of movements) {
+      if (Math.abs(dy) > 1) motion(row, [{ transform: "translateY(" + dy + "px)" }, { transform: "none" }], 500);
+    }
+  }
 }
 const CH = k => LANG === "id" ? k : ({ "Spesifikasi": "Specification", "Keluarga": "Family", "Skema": "Scheme", "Link": "Links", "Kesimpulan Moran": "Moran conclusion", "Kesimpulan Geary": "Geary conclusion",
   "Kesepakatan": "Agreement", "LISA sig. (p mentah)": "LISA sig. (raw p)", "% kelas LISA = acuan": "% LISA classes = reference", "Kelas simulasi (Moran)": "Simulation class (Moran)",
@@ -739,7 +997,8 @@ function drawSummary() {
 
 /* ---------- render ---------- */
 let built = false;
-function render() {
+function render() { updateHighlights(drawDashboard); }
+function drawDashboard() {
   if (!curSpec()) { $("#app").replaceChildren(el("div", { class: "state err", role: "alert" }, L("Konfigurasi ini belum dihitung di Rmd, sehingga tidak ditampilkan.", "This configuration was not computed in the Rmd, so it is not shown."))); return; }
   if (!built) {
     skeleton(); built = true;
@@ -755,12 +1014,12 @@ function render() {
         L("Hasil simulasi belum disematkan. Knit Columbus_Spatial_Analysis.Rmd; bab simulasi menulis hasilnya ke halaman ini.", "Simulation results are not embedded yet. Knit Columbus_Spatial_Analysis.Rmd; the simulation chapter writes them into this page.")));
     }
   }
-  buildToolbar(); drawResult(); drawMaps(); drawCurves(); drawDots(); drawTable(); drawSummary();
+  buildToolbar(); refreshComparison(); drawResult(); drawMaps(); drawCurves(); drawDots(); drawTable(); drawSummary();
   if (SIM) drawRev();
 }
 
 /* ================= SIMULASI ROBUSTNESS (CRIME) ================= */
-const CLS_COL = { Robust: "#4ADE80", Menengah: "#7C8BA3", Sensitif: "#F87171" };
+const CLS_COL = { Robust: "#2D6A4A", Menengah: "#8A919C", Sensitif: "#A3263A" };
 const badge = (cls, text) => el("span", { class: "badge b-" + cls }, text ?? T(cls));
 const rstate = { ix: "I", level: 0.5 };
 const curW = () => curSpec().id;
@@ -818,7 +1077,7 @@ function revSections() {
 
     el("section", { "aria-labelledby": "h-cls" },
       el("div", { class: "sec-head" }, el("h2", { id: "h-cls" }, L("Matriks robust dan sensitif (simulasi)", "Robust and sensitive matrices (simulation)")),
-        el("p", { class: "muted" }, L("Nilai CRIME yang asli disusun ulang di peta mengikuti 5 pola yang diketahui, lalu diuji dengan 32 matriks. Penyesalan = daya matriks terbaik untuk suatu pola dikurangi daya matriks ini. Robust: ukuran uji wajar dan penyesalan maksimum ≤ 0,15. Sensitif: ukuran uji tidak wajar atau penyesalan maksimum > 0,30. Klik matriks untuk memilihnya di seluruh halaman.", "The original CRIME values are rearranged on the map following 5 known patterns, then tested with all 32 matrices. Regret = power of the best matrix for a pattern minus the power of this matrix. Robust: acceptable test size and maximum regret ≤ 0.15. Sensitive: unacceptable test size or maximum regret > 0.30. Click a matrix to select it across the page."))),
+        el("p", { class: "muted" }, L("Nilai CRIME yang asli disusun ulang di peta mengikuti 5 pola yang diketahui, lalu diuji dengan 32 matriks. Penyesalan = daya matriks terbaik untuk suatu pola dikurangi daya matriks ini. Robust: ukuran uji wajar dan penyesalan maksimum ≤ 0,15. Sensitif: ukuran uji tidak wajar atau penyesalan maksimum > 0,30.", "The original CRIME values are rearranged on the map following 5 known patterns, then tested with all 32 matrices. Regret = power of the best matrix for a pattern minus the power of this matrix. Robust: acceptable test size and maximum regret ≤ 0.15. Sensitive: unacceptable test size or maximum regret > 0.30."))),
       el("div", { class: "controls" },
         el("div", { class: "field" }, el("span", { class: "lbl", id: "ixLbl" }, L("Indeks", "Index")), el("div", { class: "seg", id: "segIx", role: "group", "aria-labelledby": "ixLbl" }))),
       el("div", { class: "classboard", id: "board" }),
@@ -885,7 +1144,8 @@ function purposeSection() {
       el("div", { class: "panel purpose-facts" },
         el("h3", {}, L(`Bukti dari data ${v}`, `Evidence from the ${v} data`)),
         el("ul", { class: "evid" },
-          fact(`${Lc["Sig. FDR min"]}–${Lc["Sig. FDR maks"]}`, L(`wilayah klaster LISA signifikan (FDR), tergantung matriks. Pada acuan Queen · W hanya ${ref}.`, `significant LISA cluster regions (FDR), depending on the matrix. Only ${ref} at the Queen · W reference.`)),
+          fact(`${Lc["Sig. FDR min"]}–${Lc["Sig. FDR maks"]}`, L(`wilayah dengan LISA signifikan setelah FDR 5%, tergantung matriks. Di dalamnya klaster Tinggi–tinggi ${nrange(v, ["HH"])}, Rendah–rendah ${nrange(v, ["LL"])}, dan pencilan ${nrange(v, ["HL", "LH"])} wilayah. Pada acuan Queen · W: ${ref}.`,
+            `neighbourhoods with significant local Moran statistics after 5% FDR correction, depending on the matrix. Of these, High–high clusters ${nrange(v, ["HH"])}, Low–low ${nrange(v, ["LL"])} and outliers ${nrange(v, ["HL", "LH"])}. At the Queen · W reference: ${ref}.`)),
           fact(`${fmt(i0, 3)}–${fmt(i1, 3)}`, L(`rentang Moran's I untuk data yang sama (Geary's C: ${fmt(c0, 3)}–${fmt(c1, 3)}).`, `range of Moran's I for the same data (Geary's C: ${fmt(c0, 3)}–${fmt(c1, 3)}).`)),
           fact(`${Math.round(100 * worst.reg_I)} ${L("poin", "pts")}`, L(`daya yang hilang di simulasi bila memakai ${LB(worst.label)}, dibanding ${Math.round(100 * rec.reg_I)} poin untuk ${LB(RM.rec_label)}.`, `of power lost in the simulation with ${LB(worst.label)}, against ${Math.round(100 * rec.reg_I)} for ${LB(RM.rec_label)}.`)),
           fact(`${fmt(sig, 0)}%`, L(`matriks memberi Moran's I signifikan untuk ${v}. Arah pola tidak pernah berbalik, jadi yang rawan dimanipulasi adalah besarnya efek dan peta lokal.`, `of matrices give a significant Moran's I for ${v}. The direction never flips, so what is open to cherry-picking is the effect size and the local map.`))),
@@ -894,11 +1154,10 @@ function purposeSection() {
 
 function revControls() {
   $("#segIx").replaceChildren(...["I", "C"].map(k => el("button", { type: "button", "aria-pressed": String(rstate.ix === k),
-    onclick: () => { rstate.ix = k; revControls(); drawRev(); } }, IXN[k])));
+    onclick: () => { rstate.ix = k; updateHighlights(() => { revControls(); drawRev(); }); } }, IXN[k])));
   $("#segLv").replaceChildren(...RM.levels.map(lv => el("button", { type: "button", "aria-pressed": String(Math.abs(rstate.level - lv) < 1e-9),
-    onclick: () => { rstate.level = lv; revControls(); drawPHeat(); } }, fmt(lv, 2))));
+    onclick: () => { rstate.level = lv; updateHighlights(() => { revControls(); drawPHeat(); }); } }, fmt(lv, 2))));
 }
-const pickW = w => selectSpec(w);
 function drawRev() { drawBoard(); drawBars(); drawDetail(); drawPHeat(); drawMult(); }
 
 function drawRewire() {
@@ -910,24 +1169,23 @@ function drawRewire() {
   ax.append(sv("line", { x1: ML, x2: W - R, y1: H - B, y2: H - B }));
   for (let t = Math.ceil(lo * 10) / 10; t <= hi; t += 0.1) { const tx = sv("text", { x: X(t), y: H - B + 16, "text-anchor": "middle" }); tx.textContent = fmt(t, 1); ax.append(tx); }
   svg.append(ax);
-  cnt.forEach((c, i) => { if (!c) return; const r = sv("rect", { x: X(lo + i * bw) + 0.5, y: Y(c), width: Math.max(1, X(lo + bw) - X(lo) - 1), height: H - B - Y(c), fill: "#3B4E70", rx: 1 });
+  cnt.forEach((c, i) => { if (!c) return; const r = sv("rect", { x: X(lo + i * bw) + 0.5, y: Y(c), width: Math.max(1, X(lo + bw) - X(lo) - 1), height: H - B - Y(c), fill: "#8AA1BF" });
     bindTip(r, () => [L(`I antara ${fmt(lo + i * bw, 3)} dan ${fmt(lo + (i + 1) * bw, 3)}`, `I between ${fmt(lo + i * bw, 3)} and ${fmt(lo + (i + 1) * bw, 3)}`), L(`${c} dari 999 pengacakan`, `${c} of 999 shuffles`)]); svg.append(r); });
   const vline = (x, col, dash, lab, left, yy) => { svg.append(sv("line", { x1: X(x), x2: X(x), y1: MT, y2: H - B, stroke: col, "stroke-width": 2, "stroke-dasharray": dash }));
     const t = sv("text", { x: X(x) + (left ? -5 : 5), y: yy, fill: col, "font-size": 11.5, "font-weight": 600, "text-anchor": left ? "end" : "start" }); t.textContent = lab; svg.append(t); };
-  vline(RM.obs_I, "#FACC15", "", L("Asli", "Original"), true, MT + 10); vline(RM.diag_I, "#FB923C", "4 3", "w_ii = 1", true, MT + 28);
+  vline(RM.obs_I, "var(--moran)", "", L("Asli", "Original"), true, MT + 10); vline(RM.diag_I, "var(--accent)", "4 3", "w_ii = 1", true, MT + 28);
   $("#rwHist").replaceChildren(svg);
-  $("#rwKey").replaceChildren(el("span", {}, el("span", { class: "sw", style: "background:#3B4E70" }), L("999 pengacakan tetangga", "999 neighbour shuffles")),
-    el("span", {}, el("span", { class: "sw", style: "background:#FACC15" }), L(`Queen asli, I = ${fmt(RM.obs_I, 3)}`, `Original Queen, I = ${fmt(RM.obs_I, 3)}`)),
-    el("span", {}, el("span", { class: "sw", style: "background:#FB923C" }), L(`Diagonal diisi 1, I = ${fmt(RM.diag_I, 3)}`, `Diagonal set to 1, I = ${fmt(RM.diag_I, 3)}`)));
+  $("#rwKey").replaceChildren(el("span", {}, el("span", { class: "sw", style: "background:#8AA1BF" }), L("999 pengacakan tetangga", "999 neighbour shuffles")),
+    el("span", {}, el("span", { style: "display:inline-block;width:16px;border-top:2px solid var(--moran)" }), L(`Queen asli, I = ${fmt(RM.obs_I, 3)}`, `Original Queen, I = ${fmt(RM.obs_I, 3)}`)),
+    el("span", {}, el("span", { style: "display:inline-block;width:16px;border-top:2px dashed var(--accent)" }), L(`Diagonal diisi 1, I = ${fmt(RM.diag_I, 3)}`, `Diagonal set to 1, I = ${fmt(RM.diag_I, 3)}`)));
 }
 
 function drawBoard() {
   const key = "cls_" + rstate.ix;
   $("#board").replaceChildren(...["Robust", "Menengah", "Sensitif"].map(c => {
-    const ms = RC.filter(r => r[key] === c).sort((a, b) => a["reg_" + rstate.ix] - b["reg_" + rstate.ix]);
-    return el("div", { class: "panel col" }, el("h3", {}, badge(c), el("span", { class: "muted num", style: "font-weight:500;font-size:14px" }, L(`${ms.length} matriks`, `${ms.length} ${ms.length === 1 ? "matrix" : "matrices"}`))),
-      ms.length ? el("div", { class: "chips" }, ms.map(r => el("button", { class: "chip", type: "button", "aria-pressed": String(r.W === curW()), onclick: () => pickW(r.W) }, LB(r.label))))
-        : el("p", { class: "muted", style: "font-size:14px" }, L("Tidak ada matriks di kelompok ini.", "No matrix in this group.")));
+    const count = RC.filter(row => row[key] === c).length;
+    return el("div", { class: "panel col" }, el("h3", {}, badge(c, T(c)),
+      el("span", { class: "muted num" }, L(count + " matriks", count + (count === 1 ? " matrix" : " matrices")))));
   }));
 }
 
@@ -935,11 +1193,9 @@ function drawBars() {
   const ix = rstate.ix, key = "reg_" + ix, data = [...RC].sort((a, b) => a[key] - b[key]), mx = Math.max(0.45, ...data.map(r => r[key]));
   $("#barsTitle").textContent = L(`Penyesalan maksimum ${IXN[ix]}, diurutkan dari yang paling robust`, `Maximum regret of ${IXN[ix]}, most robust first`);
   $("#barsKey").replaceChildren(...Object.entries(CLS_COL).map(([k, c]) => el("span", {}, el("span", { class: "sw", style: `background:${c}` }), T(k))),
-    el("span", {}, el("span", { style: "display:inline-block;width:14px;border-top:1.5px dashed #7C8BA3" }), L("Batas 0,15 dan 0,30", "Thresholds 0.15 and 0.30")));
+    el("span", {}, el("span", { style: "display:inline-block;width:14px;border-top:1.5px dashed var(--faint)" }), L("Batas 0,15 dan 0,30", "Thresholds 0.15 and 0.30")));
   $("#bars").replaceChildren(...data.map(r => {
-    const row = el("div", { class: "brow" + (r.W === curW() ? " sel" : ""), role: "button", tabindex: "0", "aria-pressed": String(r.W === curW()),
-      "aria-label": `${LB(r.label)}: ${L("penyesalan", "regret")} ${fmt(r[key], 3)}, ${T(r["cls_" + ix])}`,
-      onclick: () => pickW(r.W), onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickW(r.W); } } },
+    const row = el("div", { class: "brow" + (r.W === curW() ? " sel" : "") },
       el("span", { class: "bl" }, LB(r.label)),
       el("span", { class: "track" },
         el("span", { class: "fill", style: `width:${r[key] / mx * 100}%;background:${CLS_COL[r["cls_" + ix]]}` }),
@@ -966,40 +1222,59 @@ function drawDetail() {
     el("p", { class: "note" }, L(`Kesepakatan keputusan Moran dan Geary: ${pct(100 * r.agree)} ulangan. Penyesalan maksimum gabungan: ${fmt(r.reg_J, 3)}.`, `Moran and Geary decisions agree in ${pct(100 * r.agree)} of replications. Combined maximum regret: ${fmt(r.reg_J, 3)}.`)));
 }
 
-const PA = [23, 36, 59], PB = [37, 99, 235]; // biru malam → biru terang; teks terang tetap kontras ≥ 4,5:1
-function pmix(t) { t = Math.max(0, Math.min(1, t)); return PA.map((v, i) => Math.round(v + (PB[i] - v) * t)); }
+// paper → ink-blue → ink, the same stops as SEQ_RAMP in analysis/style.R: darker means more power
+const PSTOP = [[244, 244, 240], [188, 201, 218], [85, 115, 157], [36, 71, 122], [23, 35, 59]];
+function pmix(t) { t = Math.max(0, Math.min(1, t)) * (PSTOP.length - 1); const i = Math.min(PSTOP.length - 2, Math.floor(t)), f = t - i;
+  return PSTOP[i].map((v, k) => Math.round(v + (PSTOP[i + 1][k] - v) * f)); }
 const pcol = t => `rgb(${pmix(t).join(",")})`;
-const pink = () => "#F1F5F9";
+// text on a tile: black on light tiles, white on dark tiles (>= 4.58:1 WCAG AA contrast across any luminance)
+const pink = t => { const [r, g, b] = pmix(t).map(c => { c /= 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }); const Lt = .2126 * r + .7152 * g + .0722 * b; return (Lt + .05) / .05 >= 1.05 / (Lt + .05) ? "#000000" : "#FFFFFF"; };
 function drawPHeat() {
   const ix = rstate.ix, lv = rstate.level, gens = RG.map(r => r.id);
   const order = [...RC].sort((a, b) => a["reg_" + ix] - b["reg_" + ix]);
   const grid = $("#pheat"); grid.style.gridTemplateColumns = `max-content repeat(${gens.length}, minmax(64px, 1fr))`;
+  const oldColors = new Map();
+  if (grid.offsetWidth && !reducedMotion.matches) {
+    for (const cell of grid.querySelectorAll(".c")) oldColors.set(cell.dataset.key, {
+      backgroundColor: getComputedStyle(cell).backgroundColor, best: cell.classList.contains("best")
+    });
+  }
   const cells = [el("div", {}), ...RG.map(r => el("div", { class: "h" }, T(r.label)))];
   const best = Object.fromEntries(gens.map(gn => [gn, bestOf(gn, lv, ix)]));
   const vals = RP.filter(r => Math.abs(r.level - lv) < 1e-9).map(r => r["pow_" + ix]), lo = Math.min(...vals), hi = Math.max(...vals), tt = p => (p - lo) / (hi - lo || 1);
   order.forEach(r => {
-    cells.push(el("div", { class: "rl" + (r.W === curW() ? " sel" : ""), onclick: () => pickW(r.W) }, LB(r.label)));
+    cells.push(el("div", { class: "rl" + (r.W === curW() ? " sel" : "") }, LB(r.label)));
     gens.forEach(gn => {
       const p = powOf(r.W, gn, lv)["pow_" + ix], isBest = Math.abs(p - best[gn]) < 1e-12;
-      const c = el("div", { class: "c" + (isBest ? " best" : "") + (r.W === curW() ? " sel" : ""), style: `background:${pcol(tt(p))};color:${pink(tt(p))}`,
-        onclick: () => pickW(r.W) }, fmt(p, 2));
+      const c = el("div", { "data-key": r.W + "/" + gn, class: "c" + (isBest ? " best" : "") + (r.W === curW() ? " sel" : ""), style: `background:${pcol(tt(p))};color:${pink(tt(p))}` }, fmt(p, 2));
       bindTip(c, () => [`${LB(r.label)} · ${T(RG.find(x => x.id === gn).label)}`, `${L("Daya", "Power of")} ${IXN[ix]}: ${fmt(p, 3)}`, `${L("Daya terbaik untuk pola ini", "Best power for this pattern")}: ${fmt(best[gn], 3)}`, `${L("Penyesalan", "Regret")}: ${fmt(best[gn] - p, 3)}`]);
       cells.push(c);
     });
   });
   grid.replaceChildren(...cells);
+  if (oldColors.size) for (const cell of grid.querySelectorAll(".c")) {
+    const old = oldColors.get(cell.dataset.key);
+    if (old && old.backgroundColor !== cell.style.backgroundColor) {
+      motion(cell, [{ backgroundColor: old.backgroundColor }, { backgroundColor: cell.style.backgroundColor }]);
+    }
+    if (old && !old.best && cell.classList.contains("best")) {
+      motion(cell, [{ boxShadow: "inset 0 0 0 4px var(--geary)" }, { boxShadow: "inset 0 0 0 2px var(--geary)" }]);
+    }
+  }
   $("#pheatKey").replaceChildren(el("span", {}, el("span", { class: "sw", style: `background:${pcol(0)}` }), `${L("Daya terendah", "Lowest power")} (${fmt(lo, 2)})`),
     el("span", {}, el("span", { class: "sw", style: `background:${pcol(1)}` }), `${L("Daya tertinggi", "Highest power")} (${fmt(hi, 2)})`),
-    el("span", {}, el("span", { class: "sw", style: "box-shadow:inset 0 0 0 2px #FB923C;background:#17243B" }), L("Matriks terbaik untuk pola itu", "Best matrix for that pattern")),
+    el("span", {}, el("span", { class: "sw", style: "box-shadow:inset 0 0 0 2px var(--geary);background:var(--surface-2)" }), L("Matriks terbaik untuk pola itu", "Best matrix for that pattern")),
     el("span", {}, L(`Baris diurutkan dari penyesalan maksimum ${IXN[ix]} terkecil.`, `Rows sorted by smallest maximum regret of ${IXN[ix]}.`)));
 }
 
 function drawMult() {
   const ix = rstate.ix, r = critOf(curW()), lv = RM.levels;
   $("#multTitle").textContent = L(`Kurva daya ${LB(r.label)} dibanding matriks terbaik (${IXN[ix]})`, `Power curves of ${LB(r.label)} against the best matrix (${IXN[ix]})`);
-  $("#multKey").replaceChildren(el("span", {}, el("span", { class: "sw", style: "background:#FACC15" }), LB(r.label)),
-    el("span", {}, el("span", { class: "sw", style: "background:#7C8BA3" }), L("Matriks terbaik untuk pola itu", "Best matrix for that pattern")));
-  $("#mult").replaceChildren(...RG.map(gr => {
+  $("#multKey").replaceChildren(el("span", {}, el("span", { class: "sw", style: "background:var(--accent)" }), LB(r.label)),
+    el("span", {}, el("span", { style: "display:inline-block;width:16px;border-top:1.6px dashed var(--faint)" }), L("Matriks terbaik untuk pola itu", "Best matrix for that pattern")));
+  const mult = $("#mult");
+  const previous = [...mult.querySelectorAll(".selected-power")].map(path => path.getAttribute("d"));
+  mult.replaceChildren(...RG.map(gr => {
     const W = 220, H = 150, ML = 30, R = 14, MT = 8, B = 24, X = x => ML + (x - 0.3) / 0.6 * (W - ML - R), Y = y => MT + (1 - y) * (H - MT - B);
     const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": L(`Kurva daya pada ${T(gr.label)}`, `Power curve for ${T(gr.label)}`) });
     const ax = sv("g", { class: "axis" });
@@ -1007,66 +1282,187 @@ function drawMult() {
       const tx = sv("text", { x: ML - 5, y: Y(t) + 4, "text-anchor": "end" }); tx.textContent = fmt(t, 1); ax.append(tx); });
     lv.forEach(t => { const tx = sv("text", { x: X(t), y: H - 6, "text-anchor": "middle" }); tx.textContent = fmt(t, 1); ax.append(tx); });
     svg.append(ax);
-    const path = (pts, col, w, dash) => svg.append(sv("path", { d: pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join(""), fill: "none", stroke: col, "stroke-width": w, "stroke-dasharray": dash || "" }));
+    const path = (pts, col, w, dash) => svg.append(sv("path", { class: dash ? "best-power" : "selected-power", pathLength: 1, d: pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join(""), fill: "none", stroke: col, "stroke-width": w, "stroke-dasharray": dash || "" }));
     const bp = lv.map(t => [t, bestOf(gr.id, t, ix)]), sp = lv.map(t => [t, powOf(r.W, gr.id, t)["pow_" + ix]]);
-    path(bp, "#7C8BA3", 1.6, "4 3"); path(sp, "#FACC15", 2.2);
-    sp.forEach((p, i) => { const c = sv("circle", { cx: X(p[0]), cy: Y(p[1]), r: 3.4, fill: "#FACC15" });
+    path(bp, "var(--faint)", 1.6, "4 3"); path(sp, "var(--accent)", 2.2);
+    sp.forEach((p, i) => { const c = sv("circle", { cx: X(p[0]), cy: Y(p[1]), r: 3.4, fill: "var(--accent)" });
       bindTip(c, () => [T(gr.label), `${L("Tingkat", "Level")} ${fmt(p[0], 2)}`, `${L("Daya", "Power of")} ${LB(r.label)}: ${fmt(p[1], 3)}`, `${L("Daya terbaik", "Best power")}: ${fmt(bp[i][1], 3)}`]); svg.append(c); });
     return el("div", {}, el("h4", {}, T(gr.label)), svg);
   }));
-}
-
-
-/* ================= ADEGAN: barisan foto tahanan dan siluet latar ================= */
-const SIL = {
-  stand: (fill) => `<circle cx="50" cy="34" r="19" fill="${fill}"/><path fill="${fill}" d="M50 56 C40 56 35 59 33 63 L16 70 C8 74 4 82 4 96 L4 250 L96 250 L96 96 C96 82 92 74 84 70 L67 63 C65 59 60 56 50 56 Z"/>`,
-  detective: `<g fill="currentColor"><path d="M28 33 Q60 26 94 33 L93 38 Q60 32 29 38Z"/><path d="M42 33 L46 13 Q61 6 76 13 L80 33Z"/><ellipse cx="62" cy="46" rx="12" ry="13"/><path d="M44 58 Q62 51 80 58 L88 122 L98 162 L28 162 L40 122Z"/><path d="M45 160 L35 210 L48 213 L59 163Z"/><path d="M70 160 L88 207 L101 204 L83 160Z"/><path d="M78 66 L104 92 L98 99 L73 78Z"/><path d="M33 211 L52 211 L52 217 L28 217Z"/><path d="M86 205 L106 200 L108 206 L88 211Z"/></g><circle cx="108" cy="102" r="8" fill="none" stroke="currentColor" stroke-width="3"/>`,
-  chalk: `<g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="52" cy="46" r="17"/><path d="M66 58 L100 50 L140 22 L152 30 L118 62 L170 70 L222 52 L270 68 L266 80 L224 70 L196 92 L246 128 L238 138 L184 106 L150 100 L118 124 L104 152 L92 148 L102 118 L84 98 L46 108 L42 96 L76 82 Z"/></g>`,
-  glass: `<g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"><circle cx="42" cy="42" r="28"/><path d="M63 63 L96 96"/></g>`
-};
-function drawLineup() {
-  const node = $("#lineup"); if (!node) return;
-  const hot = LISA.filter(r => r.var === "CRIME" && r.spec_id === "queen_W" && r.class_fdr === "HH").sort((a, b) => a.POLYID - b.POLYID).slice(0, 5);
-  const W = 600, H = 360, base = 350, n = Math.max(hot.length, 1), gap = W / (n + 0.6);
-  let out = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax meet" aria-hidden="true">`;
-    for (let k = 0, cm = 200; cm >= 150; cm -= 5, k++) {
-    const y = 28 + k * 30.5, major = cm % 10 === 0;
-    out += `<line x1="0" x2="${W - 46}" y1="${y}" y2="${y}" stroke="#C7D2E3" stroke-opacity="${major ? .2 : .08}" stroke-width="${major ? 2 : 1}"/>`;
-    if (major) out += `<text x="${W - 4}" y="${y + 5}" text-anchor="end" fill="#C7D2E3" fill-opacity=".55" font-size="15" font-weight="600" font-family="Inter,sans-serif">${cm}</text>`;
-  }
-  hot.forEach((r, i) => {
-    const sc = [1, .94, 1.04, .97, 1.01][i % 5], x = gap * (i + 0.8) - 50 * sc, y = base - 250 * sc;
-    const val = VAL.CRIME[r.POLYID - 1];
-    out += `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${sc})">${SIL.stand("#04070D")}
-      <rect x="8" y="126" width="84" height="50" rx="3" fill="#E6EBF3"/><circle cx="8" cy="151" r="7" fill="#04070D"/><circle cx="92" cy="151" r="7" fill="#04070D"/>
-      <text x="50" y="146" text-anchor="middle" font-size="12.5" font-weight="800" fill="#111827" font-family="Inter,sans-serif">POLYID ${r.POLYID}</text>
-      <text x="50" y="165" text-anchor="middle" font-size="11" font-weight="600" fill="#334155" font-family="Inter,sans-serif">CRIME ${fmt(val, 1)}</text></g>`;
+  if (mult.offsetWidth) mult.querySelectorAll(".selected-power").forEach((path, i) => {
+    if (previous[i] && previous[i] !== path.getAttribute("d")) {
+      motion(path, [{ strokeDasharray: "1 1", strokeDashoffset: 1 }, { strokeDasharray: "1 1", strokeDashoffset: 0 }]);
+    }
   });
-  out += `</svg>`;
-  node.innerHTML = out;
-  node.setAttribute("role", "img");
-  node.setAttribute("aria-label", L(`Barisan ${hot.length} lingkungan hot spot CRIME: POLYID ${hot.map(r => r.POLYID).join(", ")}`, `Line-up of ${hot.length} CRIME hot spot neighbourhoods: POLYID ${hot.map(r => r.POLYID).join(", ")}`));
-  node.append(el("p", { class: "cap" }, L(`Barisan ini: ${hot.length} lingkungan hot spot CRIME (LISA, Queen · W, FDR 5%)`, `This line-up: ${hot.length} CRIME hot spot neighbourhoods (LISA, Queen · W, FDR 5%)`)));
 }
-function scatterSilhouettes() {
-  const box = $("#bgfx"), Wd = document.documentElement.clientWidth, Hd = document.body.scrollHeight;
-  const wrapW = Math.min(1320, Wd), gutter = (Wd - wrapW) / 2, kinds = ["detective", "chalk", "detective", "glass", "chalk", "detective"];
-  const n = Math.max(6, Math.round(Hd / 520)), items = [];
-  for (let i = 0; i < n; i++) {
-    const kind = kinds[i % kinds.length], w = kind === "chalk" ? 170 + Math.random() * 90 : kind === "glass" ? 70 + Math.random() * 40 : 90 + Math.random() * 60;
-    const vb = kind === "chalk" ? "0 0 300 170" : kind === "glass" ? "0 0 110 110" : "0 0 120 220";
-    const left = gutter > w * .6 ? (i % 2 ? Wd - gutter + Math.random() * Math.max(0, gutter - w) : Math.random() * Math.max(0, gutter - w)) : Math.random() * (Wd - w);
-    const top = 520 + (i + Math.random() * .8) * (Hd - 700) / n;
-    const rot = kind === "chalk" ? (Math.random() * 50 - 25) : 0, flip = kind === "detective" && Math.random() < .5 ? -1 : 1;
-    items.push(`<svg viewBox="${vb}" style="left:${left.toFixed(0)}px;top:${top.toFixed(0)}px;width:${w.toFixed(0)}px;opacity:${(0.05 + Math.random() * .04).toFixed(3)};transform:rotate(${rot.toFixed(0)}deg) scaleX(${flip})">${SIL[kind]}</svg>`);
+
+
+/* ---------- comparison of CRIME clusters at 5% FDR ---------- */
+function startComparison() {
+  const regionSelect = $("#comp-region");
+  const districts = REG.POLYID, indexOf = id => districts.indexOf(Number(id));
+  const clusters = new Map(SPECS.map(({ id }) => [id, new Map()]));
+  LISA.filter(row => row.var === "CRIME").forEach(row => clusters.get(row.spec_id).set(row.POLYID, row.class_fdr));
+  const classification = (id, i) => clusters.get(id).get(districts[i]);
+  const regionLabel = i => `POLYID ${districts[i]}`;
+  const rateLabel = i => `CRIME ${fmt(VAL.CRIME[i], 1)} ${L("per 1.000 rumah tangga", "per 1,000 households")}`;
+  const specById = new Map(SPECS.map(spec => [spec.id, spec]));
+
+  $("#comp-region-label").textContent = L("Pilih wilayah", "Select neighbourhood");
+  $("#comp-ref-label").textContent = L("Acuan", "Reference");
+  $("#comp-alt-label").textContent = L("Pembanding", "Comparison");
+  $("#comp-open").textContent = L("Analisis matriks ini", "Analyse this matrix");
+  $("#comp-key").textContent = L("B = biner · W = standardisasi baris · FDR 5%", "B = binary · W = row-standardized · 5% FDR");
+  regionSelect.replaceChildren(...districts.map((id, i) => el("option", { value: id }, regionLabel(i))));
+  regionSelect.value = "29";
+  legend($("#comp-legend"), Object.entries(COL_LISA).map(([code, colour]) => [colour, LISA_LBL[code]]), L("Kelas LISA, FDR 5% (sama untuk kedua peta)", "LISA class, 5% FDR (same for both maps)"));
+
+  function panel(side) {
+    const { svg: map, marks, paint } = createMap(document.getElementById("comp-" + side + "-map"));
+    const outline = sv("path", { class: "compare-outline", pathLength: "1", "aria-hidden": "true" });
+    map.append(outline);
+    marks.forEach((mark, i) => {
+      mark.dataset.polyid = districts[i];
+      mark.addEventListener("click", () => {
+        regionSelect.value = String(districts[i]);
+        showRegion();
+      });
+    });
+    return { side, map, marks, outline, paint };
   }
-  box.innerHTML = items.join("");
+  const reference = panel("ref");
+  const comparison = panel("alt");
+
+  function showRegion() {
+    const i = indexOf(regionSelect.value), selected = curSpec().id;
+    [reference, comparison].forEach(({ marks, outline }) => {
+      const shape = marks[i].getAttribute("d");
+      if (shape === outline.getAttribute("d")) return;
+      const hadSelection = outline.hasAttribute("d");
+      outline.setAttribute("d", shape);
+      if (hadSelection) {
+        outline.getAnimations().forEach(a => a.cancel());
+        motion(outline, [{ strokeDasharray: "1 1", strokeDashoffset: 1 }, { strokeDasharray: "1 1", strokeDashoffset: 0 }], 420);
+      }
+    });
+    $("#comp-region-detail").replaceChildren(el("strong", {}, regionLabel(i)),
+      ` · ${rateLabel(i)} · ${LB(specById.get(M.ref).label)}: ${LISA_LBL[classification(M.ref, i)]}`,
+      ` · ${LB(specById.get(selected).label)}: ${LISA_LBL[classification(selected, i)]}`);
+  }
+  function showMatrix({ side, map, marks, paint }, id) {
+    const label = LB(specById.get(id).label);
+    let significant = 0;
+    paint(i => {
+      const code = classification(id, i);
+      marks[i].dataset.lisa = code;
+      if (code !== "NS") significant++;
+      return COL_LISA[code];
+    }, i => [regionLabel(i), rateLabel(i), LISA_LBL[classification(id, i)]]);
+    const summary = L(`${significant} dari ${districts.length} signifikan`, `${significant} of ${districts.length} significant`);
+    const n = code => marks.filter((_, i) => classification(id, i) === code).length;
+    const breakdown = L(`klaster ${n("HH")} Tinggi–tinggi, ${n("LL")} Rendah–rendah; pencilan ${n("HL") + n("LH")}`,
+                        `clusters ${n("HH")} High–high, ${n("LL")} Low–low; outliers ${n("HL") + n("LH")}`);
+    map.setAttribute("aria-label", `${L("Kelas LISA", "LISA classes")} · ${label} · ${summary} · ${breakdown}`);
+    $(`#comp-${side}-name`).textContent = label;
+    $(`#comp-${side}-count`).textContent = summary;
+    $(`#comp-${side}-stats`).replaceChildren(
+      el("span", {}, breakdown),
+      el("span", {}, `Moran’s I ${fmt(g("CRIME", id, "Moran's I").stat, 3)}`),
+      el("span", {}, `Geary’s C ${fmt(g("CRIME", id, "Geary's C").stat, 3)}`));
+    return significant;
+  }
+  function showComparison() {
+    const selected = curSpec().id, count = showMatrix(comparison, selected);
+    const changed = districts.filter((_, i) => classification(M.ref, i) !== classification(selected, i)).length;
+    const status = $("#comp-status");
+    status.hidden = false;
+    status.textContent = count === 0
+      ? L(`Tidak ada wilayah signifikan pada matriks pembanding. ${changed} wilayah berganti kelas dari acuan.`,
+          `No significant neighbourhoods in the comparison matrix. ${changed} changed class from the reference.`)
+      : L(`${changed} wilayah berbeda kelas dari acuan.`, `${changed} neighbourhoods differ in class from the reference.`);
+    showRegion();
+  }
+  regionSelect.addEventListener("change", showRegion);
+  $("#comp-open").addEventListener("click", () => {
+    openTab("results");
+    $("#h-hasil").focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  });
+  showMatrix(reference, M.ref);
+  return showComparison;
 }
 
 $("#foot").textContent = L(`Sumber data: ${M.data_source} (Anselin, 1988, Tabel 12.1; GeoDa Center). Komputasi: ${M.r}, spdep ${M.spdep}, sf ${M.sf}. Seed ${M.seed}, ${M.nsim} permutasi, α = ${fmt(M.alpha, 2)}. Jarak dalam ${M.distance_unit}. Dibuat ${M.generated}.`, `Data source: ${T(M.data_source)} (Anselin, 1988, Table 12.1; GeoDa Center). Computed with ${M.r}, spdep ${M.spdep}, sf ${M.sf}. Seed ${M.seed}, ${NUM(M.nsim)} permutations, α = ${fmt(M.alpha, 2)}. Distances in ${T(M.distance_unit)}. Generated ${M.generated}.`);
+// Keep each analytical section mounted so its matrix, layers and downloads stay in sync.
+const views = [
+  ["compare", L("Perbandingan LISA", "LISA comparison"), []],
+  ["maps", L("Peta lokal", "Local maps"), ["h-peta"]],
+  ["results", L("Hasil matriks", "Matrix results"), ["h-hasil", "h-ans", "h-tujuan"]],
+  ["sensitivity", L("Sensitivitas", "Sensitivity"), ["h-sens", "h-ring"]],
+  ["simulation", L("Simulasi", "Simulation"), ["h-cls", "h-pow"]],
+  ["methods", L("Metode", "Methods"), ["h-dl", "h-des"]],
+  ["tables", L("Tabel & unduhan", "Tables & downloads"), ["h-tabel"]]
+];
+function openTab(key, updateUrl = true) {
+  const list = $("#dashboard-tabs");
+  const tabSelector = "#dashboard-tabs [aria-selected=true]";
+  const previousTab = indicatorPositions(tabSelector);
+  const active = document.getElementById("tab-" + key) || list.firstElementChild;
+  for (const tab of list.children) {
+    const selected = tab === active;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
+  }
+  key = active.dataset.view;
+  $("#toolbar").hidden = key === "methods";
+  moveIndicator(tabSelector, previousTab);
+  if (updateUrl && list.getBoundingClientRect().top <= 0) window.scrollTo(0, 0);
+  hideTip();
+  if (key === "sensitivity") drawCurves();
+  const hash = key === "compare" ? "" : "#" + key;
+  if (updateUrl && location.hash !== hash) history.pushState(null, "", location.pathname + location.search + hash);
+  for (const lang of ["en", "id"]) {
+    document.querySelector('.lang [hreflang="' + lang + '"]').href = "?lang=" + lang + hash;
+  }
+}
+function buildTabs() {
+  const list = $("#dashboard-tabs");
+  list.setAttribute("aria-label", L("Bagian dashboard", "Dashboard sections"));
+  for (const [key, label, headings] of views) {
+    let panel = document.getElementById("panel-" + key);
+    if (!panel) {
+      const sections = headings.map(id => document.getElementById(id)?.closest("section")).filter(Boolean);
+      if (!sections.length) continue;
+      panel = el("div", {id: "panel-" + key, role: "tabpanel", "aria-labelledby": "tab-" + key});
+      panel.append(...sections);
+      $("#app").append(panel);
+    }
+    panel.tabIndex = 0;
+    list.append(el("button", {type: "button", role: "tab", id: "tab-" + key, "data-view": key,
+      "aria-controls": panel.id, onclick: () => openTab(key)}, label));
+  }
+  list.addEventListener("keydown", event => {
+    const tabs = [...list.children], i = tabs.indexOf(event.target);
+    const next = {ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length,
+      Home: 0, End: tabs.length - 1}[event.key];
+    if (next === undefined || i < 0) return;
+    event.preventDefault();
+    tabs[next].focus();
+    openTab(tabs[next].dataset.view);
+  });
+  function restore() {
+    const hash = location.hash.slice(1);
+    const panel = document.getElementById(hash)?.closest('[role="tabpanel"]');
+    openTab(panel ? panel.id.slice(6) : hash, false);
+  }
+  restore();
+  window.addEventListener("popstate", restore);
+}
+const refreshComparison = startComparison();
 render();
-drawLineup(); requestAnimationFrame(scatterSilhouettes);
-let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawCurves(); scatterSilhouettes(); }, 200); });
+buildTabs();
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawCurves, 200); });
 </script>
 </body>
 </html>

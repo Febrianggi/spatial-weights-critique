@@ -24,6 +24,7 @@ and_list <- function(x, lang = "en") {
 FAM <- list(en = c("Contiguity" = "Contiguity", "KNN" = "K nearest neighbours", "Distance band" = "Distance band", "Inverse distance" = "Inverse distance"),
             id = c("Contiguity" = "Kontiguitas", "KNN" = "K tetangga terdekat", "Distance band" = "Pita jarak", "Inverse distance" = "Invers jarak"))
 spec_lab <- function(id, lang = "en") {
+  if (!length(id)) return(character(0))
   s <- specs[match(id, specs$id), ]
   v <- if (lang == "id") gsub("(\\d)\\.(\\d)", "\\1,\\2", s$variant) else s$variant
   st <- ifelse(s$family == "Inverse distance" & s$style == "B", if (lang == "id") "mentah" else "raw", s$style)
@@ -66,27 +67,12 @@ pass <- function(ok, lang = "en") sprintf('<span class="badge %s">%s</span>', if
                                           if (ok) (if (lang == "id") "Lulus" else "Pass") else (if (lang == "id") "Gagal" else "Fail"))
 
 # ---------- figures ----------
-PAL <- list(bg = "#111B2E", grid = "#1D2B45", text = "#E6EBF3", muted = "#A3B1C6", faint = "#8494AD",
-            moran = "#60A5FA", geary = "#FB923C", accent = "#FACC15", pos = "#F87171", ns = "#64748B",
-            robust = "#4ADE80", mid = "#A5B4CB", sens = "#F87171")
-COL_LISA_D <- c(HH = "#EF4444", LL = "#3B82F6", HL = "#FDBA74", LH = "#93C5FD", NS = "#26354F")
-PF <- local({
-  ok <- .Platform$OS.type == "unix" && nzchar(Sys.which("fc-list")) &&
-    any(grepl("^Inter", suppressWarnings(system2("fc-list", ":family", stdout = TRUE))))
-  if (ok) "Inter" else "sans"
-})
-theme_case <- function(base = 12.5) {
-  theme_minimal(base_size = base, base_family = PF) +
-    theme(plot.background = element_rect(fill = PAL$bg, colour = NA), panel.background = element_rect(fill = PAL$bg, colour = NA),
-          text = element_text(colour = PAL$text), axis.text = element_text(colour = PAL$muted),
-          axis.title = element_text(colour = PAL$muted, size = rel(.92)),
-          panel.grid.major = element_line(colour = PAL$grid, linewidth = .35), panel.grid.minor = element_blank(),
-          strip.text = element_text(colour = PAL$text, face = "bold", hjust = 0, size = rel(.95)),
-          legend.position = "top", legend.justification = "left", legend.title = element_text(colour = PAL$muted, size = rel(.9)),
-          legend.text = element_text(colour = PAL$text), legend.key = element_rect(fill = PAL$bg, colour = NA),
-          plot.caption = element_text(colour = PAL$faint, hjust = 0, size = rel(.85)),
-          plot.margin = margin(8, 12, 8, 8))
-}
+# Colours and theme come from analysis/style.R (loaded by core.Rmd), so report figures, output/png and the dashboard agree.
+if (!exists("ARC")) source("analysis/style.R")
+PAL <- list(bg = ARC$field, text = ARC$ink, muted = ARC$muted, faint = ARC$faint, moran = ARC$moran, geary = ARC$geary,
+            accent = ARC$maroon, band = ARC$band, ns = ARC$ns, robust = ARC$robust, mid = ARC$mid, sens = ARC$sens)
+PF <- ARC_FONT
+theme_case <- function(base = 12.5) theme_archive(base)
 png_uri <- function(p, w, h) {
   f <- tempfile(fileext = ".png")
   if (capabilities("cairo")) png(f, width = w, height = h, units = "in", res = 144, type = "cairo", bg = PAL$bg)
@@ -103,7 +89,7 @@ exhibit <- function(make, title, cap, alt = title, w = 9, h = 5.5, html = FALSE,
     if (html) obj else sprintf('<img src="%s" alt="%s" width="%d" height="%d" loading="lazy">', png_uri(obj, w, h), esc(alt[[l]]), round(w * 100), round(h * 100))
   }
   b <- if (bilingual) paste0('<div class="en">', body("en"), '</div><div class="id">', body("id"), '</div>') else body("en")
-  cat(sprintf('<figure class="exhibit" id="ex%d"><div class="ex-head"><span class="tag"><span class="en">Exhibit %d</span><span class="id">Bukti %d</span></span><span class="ex-title"><span class="en">%s</span><span class="id">%s</span></span></div><div class="ex-body">%s</div><figcaption><p><span class="en">%s</span><span class="id">%s</span></p></figcaption></figure>\n',
+  cat(sprintf('<figure class="exhibit" id="ex%d"><div class="ex-head"><span class="tag"><span class="en">Figure %d</span><span class="id">Gambar %d</span></span><span class="ex-title"><span class="en">%s</span><span class="id">%s</span></span></div><div class="ex-body">%s</div><figcaption><p><span class="en">%s</span><span class="id">%s</span></p></figcaption></figure>\n',
               EXN, EXN, EXN, title[["en"]], title[["id"]], b, cap[["en"]], cap[["id"]]))
 }
 
@@ -120,12 +106,15 @@ map_paths <- function() {
 svg_map <- function(fill, tip, label, edges = NULL, nodes = FALSE, hl = NULL) {
   P <- map_paths(); s <- .bb$s
   px <- (cc[, 1] - .bb$x0) * s; py <- (.bb$y1 - cc[, 2]) * s
-  reg <- paste0(sprintf('<path class="reg" d="%s" fill="%s"%s><title>%s</title></path>', P, fill,
-                        if (is.null(hl)) "" else ifelse(hl, ' style="stroke:#FACC15;stroke-width:2.2"', ""),
+  reg <- paste0(sprintf('<path class="%s" d="%s" fill="%s"><title>%s</title></path>',
+                        if (is.null(hl)) "reg" else ifelse(hl, "reg hl", "reg"), P, fill,
                         esc(tip)), collapse = "")
   e <- if (!is.null(edges) && nrow(edges)) paste0(sprintf('<line class="edge" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
                                                           px[edges[, 1]], py[edges[, 1]], px[edges[, 2]], py[edges[, 2]]), collapse = "") else ""
   nd <- if (nodes) paste0(sprintf('<circle class="node" cx="%.1f" cy="%.1f" r="2.2"/>', px, py), collapse = "") else ""
   sprintf('<svg class="map" viewBox="0 0 600 %.0f" role="img" aria-label="%s">%s%s%s</svg>', .bb$H, esc(label), reg, e, nd)
 }
-legend_html <- function(cols, labs) paste0('<div class="legend">', paste0(sprintf('<span><i class="sw" style="background:%s"></i>%s</span>', cols, labs), collapse = ""), '</div>')
+legend_html <- function(cols, labs, title = NULL) paste0('<div class="legend">', if (!is.null(title)) paste0('<b class="lt">', title, '</b>'),
+  paste0(sprintf('<span><i class="sw" style="background:%s"></i>%s</span>', cols, labs), collapse = ""), '</div>')
+# class legend with the number of areas in each class, e.g. "High-High (4)"
+legend_count <- function(cols, labs, n, title = NULL) legend_html(cols, sprintf('%s <span class="n">(%d)</span>', labs, n), title)

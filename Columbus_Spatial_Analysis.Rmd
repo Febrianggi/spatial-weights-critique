@@ -77,49 +77,78 @@ rob_ids <- crit$W[crit$Kelas == "Robust"]; mid_ids <- crit$W[crit$Kelas == "Mene
 k1_bad <- crit$W[crit$`K1 Moran` == "Tidak wajar"]; k1C_bad <- crit$W[crit$`K1 Geary` == "Tidak wajar"]
 rbR <- lab_to_id(both_rob); rbS <- lab_to_id(both_sen); rjI <- lab_to_id(rec_J$Spesifikasi)
 mono_ok <- all(v2$`Monoton naik`); agree_perm <- median(c(v1[[4]], v1[[7]]))
+# closing. Three different counts: (1) neighbourhoods with a significant local Moran statistic after 5% FDR,
+# (2) clusters = High-High or Low-Low neighbourhoods; a cluster group is a set of HH (or LL) neighbourhoods
+# linked through Queen contiguity to others of the same class, (3) spatial outliers = High-Low or Low-High,
+# which never belong to a cluster. col is sorted by POLYID, so index i is POLYID i.
+stopifnot(identical(as.integer(col$POLYID), 1:49))
+lisa_cls <- function(spec) lC |> filter(spec_id == spec) |> arrange(POLYID) |> pull(class_fdr)
+n_cls <- function(spec) { t <- table(factor(lisa_cls(spec), c("HH", "LL", "HL", "LH"))); setNames(as.integer(t), names(t)) }
+n_groups <- function(spec, cls) {   # Queen-connected groups of neighbourhoods that all carry class `cls`
+  cl <- lisa_cls(spec); nb <- LW$queen_B$neighbours; seen <- rep(FALSE, length(cl)); g <- 0L
+  for (i in which(cl == cls)) if (!seen[i]) {
+    g <- g + 1L; seen[i] <- TRUE; st <- i
+    while (length(st)) { j <- st[1]; st <- st[-1]; nx <- nb[[j]][cl[nb[[j]]] == cls & !seen[nb[[j]]]]; seen[nx] <- TRUE; st <- c(st, nx) }
+  }
+  g
+}
+# one sentence on the local result of a matrix, in either language, from the knitted values
+local_txt <- function(spec, l) {
+  n <- n_cls(spec); tot <- sum(n); en <- l == "en"
+  if (tot == 0) return(if (en) "no neighbourhood is significant" else "tidak ada lingkungan yang signifikan")
+  grp <- function(cls) { k <- n[[cls]]; if (!k) return(NULL); g <- n_groups(spec, cls)
+    lab <- LISA_LAB[[l]][[cls]]
+    if (en) sprintf("%d %s %s", k, lab, if (k == 1) "neighbourhood" else if (g == 1) "neighbourhoods, all in one connected group" else sprintf("neighbourhoods in %d separate groups", g))
+    else sprintf("%d lingkungan %s%s", k, lab, if (k == 1) "" else if (g == 1) ", semuanya dalam satu kelompok yang tersambung" else sprintf(" dalam %d kelompok terpisah", g)) }
+  out_ids <- which(lisa_cls(spec) %in% c("HL", "LH")); nout <- length(out_ids)
+  outl <- if (nout) {
+    ko <- n[c("HL", "LH")]; ko <- ko[ko > 0]
+    kinds <- and_list(sprintf("%d %s", ko, LISA_LAB[[l]][names(ko)]), l)
+    if (en) sprintf("%d spatial %s (%s: POLYID %s)", nout, if (nout == 1) "outlier" else "outliers", kinds, and_list(out_ids, l))
+    else sprintf("%d pencilan spasial (%s: POLYID %s)", nout, kinds, and_list(out_ids, l))
+  }
+  parts <- c(grp("HH"), grp("LL"), outl)
+  # clauses are joined with semicolons so an outlier count is never read as part of a cluster group
+  if (en) sprintf("%d %s significant: %s", tot, if (tot == 1) "neighbourhood is" else "neighbourhoods are", paste(parts, collapse = "; "))
+  else sprintf("%d lingkungan signifikan: %s", tot, paste(parts, collapse = "; "))
+}
+cls_all <- lC |> group_by(spec_id) |> summarise(HH = sum(class_fdr == "HH"), LL = sum(class_fdr == "LL"), OUT = sum(class_fdr %in% c("HL", "LH")))
+rec_sig <- lC |> filter(spec_id == rec_id, class_fdr != "NS")
+hh_mean <- mean(col$CRIME[hh_ref]); city_mean <- mean(col$CRIME)
+# how central the High-High neighbourhoods are: share of the 49 at least as close to the CBD (DISCBD) as the farthest of them
+hh_cbd_pct <- if (length(hh_ref)) 100 * mean(col$DISCBD <= max(col$DISCBD[hh_ref])) else NA
+n_half <- sum(ever_sig$k >= nrow(specs) / 2); half_ids <- sort(ever_sig$POLYID[ever_sig$k >= nrow(specs) / 2])
+cls_txt <- function(x, l) { t <- table(factor(x, c("HH", "LL", "HL", "LH"))); t <- t[t > 0]
+  and_list(sprintf("%d %s", t, LISA_LAB[[l]][names(t)]), l) }
 ```
 
 <meta name="title-en" content="When the definition of neighbour changes spatial reality">
 <meta name="title-id" content="Ketika definisi tetangga mengubah realitas spasial">
 <a class="skip" href="#main"><span class="en">Skip to the report</span><span class="id">Langsung ke laporan</span></a>
-<div id="bgfx" aria-hidden="true"></div>
 
 <div class="topbar"><div class="wrap">
-<a class="brand" href="#top"><i class="mark" aria-hidden="true"></i><span>Columbus CRIME</span></a>
+<a class="brand" href="../index.html"><i class="mark" aria-hidden="true"></i><span>Spatial Weights Critique</span></a>
 <span class="spacer"></span>
 <a class="dash" href="../dashboard_html/index.html"><span class="en">Interactive dashboard</span><span class="id">Dashboard interaktif</span></a>
 <div class="lang" role="group" aria-label="Language / Bahasa"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="id" aria-pressed="false">ID</button></div>
 </div></div>
 
 ```{r hero}
-hot <- lC |> filter(spec_id == REF, class_fdr == "HH") |> arrange(POLYID)
-if (!nrow(hot)) hot <- lC |> filter(spec_id == REF) |> arrange(desc(Ii)) |> head(4)
-hot <- head(hot, 5)
-Wv <- 600; H <- 340; base <- 330; nH <- max(nrow(hot), 1); gap <- Wv / (nH + 0.6)
-stand <- function(fill) sprintf('<circle cx="50" cy="34" r="19" fill="%s"/><path fill="%s" d="M50 56 C40 56 35 59 33 63 L16 70 C8 74 4 82 4 96 L4 250 L96 250 L96 96 C96 82 92 74 84 70 L67 63 C65 59 60 56 50 56 Z"/>', fill, fill)
-rows <- vapply(0:10, function(k) { cm <- 200 - 5 * k; y <- 26 + k * 29; major <- cm %% 10 == 0
-  paste0(sprintf('<line x1="0" x2="%d" y1="%d" y2="%d" stroke="#C7D2E3" stroke-opacity="%s" stroke-width="%s"/>', Wv - 46, y, y, if (major) ".2" else ".08", if (major) 2 else 1),
-         if (major) sprintf('<text x="%d" y="%d" text-anchor="end" fill="#C7D2E3" fill-opacity=".55" font-size="15" font-weight="600" font-family="Inter,sans-serif">%d</text>', Wv - 4, y + 5, cm) else "") }, "") |> paste(collapse = "")
-figs <- vapply(seq_len(nrow(hot)), function(i) {
-  sc <- c(1, .94, 1.04, .97, 1.01)[(i - 1) %% 5 + 1]; x <- gap * (i - 1 + 0.8) - 50 * sc; y <- base - 250 * sc
-  sprintf('<g transform="translate(%.1f,%.1f) scale(%.2f)">%s<rect x="8" y="126" width="84" height="50" rx="3" fill="#E6EBF3"/><circle cx="8" cy="151" r="7" fill="#04070D"/><circle cx="92" cy="151" r="7" fill="#04070D"/><text x="50" y="146" text-anchor="middle" font-size="12.5" font-weight="800" fill="#111827" font-family="Inter,sans-serif">POLYID %d</text><text x="50" y="165" text-anchor="middle" font-size="11" font-weight="600" fill="#334155" font-family="Inter,sans-serif">CRIME %s</text></g>',
-          x, y, sc, stand("#04070D"), hot$POLYID[i], FE(col$CRIME[hot$POLYID[i]], 1))
-}, "") |> paste(collapse = "")
-ids_txt <- paste(hot$POLYID, collapse = ", ")
+cover <- knitr::image_uri("assets/cover/rumah-dan-kendaraan-800.webp")
 cat(sprintf('<header class="hero" id="top"><div class="wrap hero-grid"><div class="intro">
+<p class="place">Columbus, Ohio / 1980</p>
 <p class="kicker"><span class="en">A critique of Moran\'s I, Geary\'s C and LISA</span><span class="id">Kritik terhadap Moran\'s I, Geary\'s C, dan LISA</span></p>
 <h1><span class="en">When the definition of neighbour changes spatial reality</span><span class="id">Ketika definisi tetangga mengubah realitas spasial</span></h1>
-<p class="lead"><span class="en">Burglaries and vehicle thefts in the 49 neighbourhoods of Columbus, Ohio (1980). The data never change. Only the rule for who counts as a neighbour changes, %d times. This report measures how much the answer moves, and which rule to use when nothing else is known.</span><span class="id">Pencurian rumah dan kendaraan di 49 lingkungan Columbus, Ohio (1980). Datanya tidak pernah berubah. Yang berubah hanya aturan siapa yang dihitung sebagai tetangga, sebanyak %d kali. Laporan ini mengukur seberapa jauh jawabannya bergeser, dan aturan mana yang dipakai bila tidak ada informasi lain.</span></p>
-<p class="byline"><b>Febrianggi Caesar Immanuel</b> <span class="en">Statistics, Universitas Padjadjaran.</span><span class="id">Statistika, Universitas Padjadjaran.</span> <span class="en">Knitted %s.</span><span class="id">Di-knit %s.</span></p>
-</div><div class="lineup" role="img" aria-label="Line-up of CRIME hot spot neighbourhoods, POLYID %s"><svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMax meet" aria-hidden="true">%s%s</svg><p class="cap"><span class="en">The line-up: %d neighbourhoods that LISA flags as High-High under %s (FDR 5%%)</span><span class="id">Barisan ini: %d lingkungan yang ditandai LISA sebagai High-High dengan %s (FDR 5%%)</span></p></div></div>
-<div class="tape-wrap" aria-hidden="true"><div class="tape"><span><span class="en">POLICE LINE &#183; DO NOT CROSS &#183; POLICE LINE &#183; DO NOT CROSS</span><span class="id">POLICE LINE &#183; DILARANG MELINTAS &#183; POLICE LINE &#183; DILARANG MELINTAS</span></span></div></div></header>\n',
-  nrow(specs), nrow(specs), format(Sys.Date(), "%Y-%m-%d"), format(Sys.Date(), "%d-%m-%Y"), ids_txt, Wv, H, rows, figs,
-  nrow(hot), lE(REF), nrow(hot), lI(REF)))
+<p class="unit"><span class="en">Residential burglaries and vehicle thefts, combined, per 1,000 households</span><span class="id">Pencurian rumah dan kendaraan, digabung, per 1.000 rumah tangga</span></p>
+<p class="lead"><span class="en">49 neighbourhoods of Columbus, Ohio, in 1980. The data never change. Only the rule for who counts as a neighbour changes, %d times. This report measures how much the answer moves, and which rule to use when nothing else is known.</span><span class="id">49 lingkungan di Columbus, Ohio, tahun 1980. Datanya tidak pernah berubah. Yang berubah hanya aturan siapa yang dihitung sebagai tetangga, sebanyak %d kali. Laporan ini mengukur seberapa jauh jawabannya bergeser, dan aturan mana yang dipakai bila tidak ada informasi lain.</span></p>
+<p class="byline"><b>Febrianggi Caesar Immanuel</b> <span class="en">Statistics, Universitas Padjadjaran.</span><span class="id">Statistika, Universitas Padjadjaran.</span> <span class="en">Knitted <span class="nw">%s</span>.</span><span class="id">Di-knit <span class="nw">%s</span>.</span></p>
+</div><figure class="cover"><img src="%s" width="800" height="533" alt="" decoding="async"></figure></div></header>\n',
+  nrow(specs), nrow(specs), format(Sys.Date(), "%Y-%m-%d"), format(Sys.Date(), "%d-%m-%Y"), cover))
 ```
 
 <div class="wrap layout">
 <nav class="toc" aria-label="Contents">
-<p><span class="en">Case file</span><span class="id">Berkas perkara</span></p>
+<p><span class="en">Contents</span><span class="id">Daftar isi</span></p>
 <ol>
 <li><a href="#why"><span class="en">Why this report exists</span><span class="id">Mengapa laporan ini dibuat</span></a></li>
 <li><a href="#data"><span class="en">The data</span><span class="id">Data</span></a></li>
@@ -127,7 +156,7 @@ cat(sprintf('<header class="hero" id="top"><div class="wrap hero-grid"><div clas
 <li><a href="#global"><span class="en">Global tests</span><span class="id">Uji global</span></a></li>
 <li><a href="#agreement"><span class="en">Moran versus Geary</span><span class="id">Moran versus Geary</span></a></li>
 <li><a href="#influence"><span class="en">One neighbourhood</span><span class="id">Satu lingkungan</span></a></li>
-<li><a href="#local"><span class="en">Local clusters</span><span class="id">Klaster lokal</span></a></li>
+<li><a href="#local"><span class="en">Local clusters and outliers</span><span class="id">Klaster dan pencilan lokal</span></a></li>
 <li><a href="#simulation"><span class="en">Which matrix to trust</span><span class="id">Matriks mana yang dipercaya</span></a></li>
 <li><a href="#practice"><span class="en">What to do instead</span><span class="id">Yang sebaiknya dilakukan</span></a></li>
 <li><a href="#limits"><span class="en">Limits</span><span class="id">Keterbatasan</span></a></li>
@@ -152,22 +181,22 @@ Laporan ini adalah kritik, bukan etalase. Datanya tetap (CRIME di Columbus) dan 
 :::
 
 ```{r markers}
-tent <- function(k) sprintf('<svg class="tent" viewBox="0 0 34 28" aria-hidden="true"><path d="M17 1 L33 27 L1 27 Z" fill="#FACC15" stroke="#111827" stroke-width="1.5"/><text x="17" y="23" text-anchor="middle" font-size="12" font-weight="800" fill="#111827" font-family="Inter,sans-serif">%d</text></svg>', k)
-mk <- function(k, big_en, big_id, en, id) sprintf('<div class="marker">%s<span class="big"><span class="en">%s</span><span class="id">%s</span></span><p><span class="en">%s</span><span class="id">%s</span></p></div>', tent(k), big_en, big_id, en, id)
-cat('<div class="markers">',
+# key findings as a register: one ruled line per finding, the figure set in the number face
+mk <- function(k, big_en, big_id, en, id) sprintf('<li><span class="no">%02d</span><span class="big"><span class="en">%s</span><span class="id">%s</span></span><p><span class="en">%s</span><span class="id">%s</span></p></li>', k, big_en, big_id, en, id)
+cat('<ol class="register" aria-label="Key findings / Temuan utama">',
   mk(1, paste0(FE(min(gM$stat)), " to ", FE(max(gM$stat))), paste0(FI(min(gM$stat)), " s.d. ", FI(max(gM$stat))),
      sprintf("Moran's I for the same CRIME values, depending only on W (lowest under %s, highest under %s).", lE(I_lo), lE(I_hi)),
      sprintf("Moran's I untuk nilai CRIME yang sama, hanya bergantung pada W (terendah pada %s, tertinggi pada %s).", lI(I_lo), lI(I_hi))),
   mk(2, paste0(min(fdr), " to ", max(fdr)), paste0(min(fdr), " s.d. ", max(fdr)),
-     sprintf("Neighbourhoods that LISA calls significant after FDR correction. %s finds %d; %d of the %d matrices find none.", lE(REF), fdr[[REF]], n_zero, nrow(specs)),
-     sprintf("Lingkungan yang dinyatakan signifikan oleh LISA setelah koreksi FDR. %s menemukan %d; %d dari %d matriks tidak menemukan satu pun.", lI(REF), fdr[[REF]], n_zero, nrow(specs))),
+     sprintf("Neighbourhoods with a significant local Moran statistic after 5%% FDR correction, High-High and Low-Low clusters and High-Low and Low-High outliers together. %s finds %d; %d of the %d matrices find none.", lE(REF), fdr[[REF]], n_zero, nrow(specs)),
+     sprintf("Lingkungan dengan statistik Moran lokal yang signifikan setelah koreksi FDR 5%%, klaster Tinggi-Tinggi dan Rendah-Rendah serta pencilan Tinggi-Rendah dan Rendah-Tinggi digabung. %s menemukan %d; %d dari %d matriks tidak menemukan satu pun.", lI(REF), fdr[[REF]], n_zero, nrow(specs))),
   mk(3, paste0(FE(sim_res$meta$obs_I), " → ", FE(sim_res$meta$rw_I_mean)), paste0(FI(sim_res$meta$obs_I), " → ", FI(sim_res$meta$rw_I_mean)),
      "Moran's I with Queen neighbours, then with the same number of neighbours assigned at random. Placement drives the result.",
      "Moran's I dengan tetangga Queen, lalu dengan jumlah tetangga yang sama tetapi diacak. Letak bobot yang menentukan hasil."),
   mk(4, lE(rec_id), lI(rec_id),
      sprintf("Recommended when nothing is known about the spatial process: the smallest worst-case loss of power (%s) in the simulation.", FE(rcr$`K3 penyesalan maks Moran`)),
      sprintf("Rekomendasi bila proses spasialnya tidak diketahui: kehilangan daya terburuk paling kecil (%s) dalam simulasi.", FI(rcr$`K3 penyesalan maks Moran`))),
-  '</div>\n')
+  '</ol>\n')
 ```
 
 <div class="note warn">
@@ -218,9 +247,10 @@ bi_table(function(l) {
 
 ```{r ex-map}
 br <- quantile(col$CRIME, seq(0, 1, .2)); cls <- cut(col$CRIME, br, include.lowest = TRUE, labels = FALSE)
-ramp <- c("#22304A", "#4A2E4C", "#86324A", "#CF4A4A", "#FCA5A5")
+ramp <- RAMP_VAL
 m <- svg_map(ramp[cls], sprintf("POLYID %d · CRIME %s", col$POLYID, FE(col$CRIME, 1)), "Map of CRIME by neighbourhood")
-leg <- function(l) legend_html(ramp, vapply(1:5, function(k) paste(FL(br[k], 1, l), "–", FL(br[k + 1], 1, l)), ""))
+leg <- function(l) legend_html(ramp, vapply(1:5, function(k) paste(FL(br[k], 1, l), "–", FL(br[k + 1], 1, l)), ""),
+  if (l == "id") "Pencurian rumah dan kendaraan per 1.000 rumah tangga, kuintil" else "Residential burglaries and vehicle thefts per 1,000 households, quintiles")
 exhibit(function(l) paste0('<div style="max-width:620px;margin:0 auto">', m, leg(l), '</div>'), html = TRUE,
   title = c(en = "Where CRIME is high", id = "Di mana CRIME tinggi"),
   cap = c(en = "Quintiles of CRIME per 1,000 households. Hover a neighbourhood to see its POLYID and value. The highest values form a block in the centre of the city and fall off toward the edges. That is the pattern every statistic below tries to summarise.",
@@ -259,7 +289,7 @@ cells <- function(l) paste0('<div class="maps m3">', paste0(vapply(gid, function
   e <- edges_all[[id]]; s <- specs[specs$id == id, ]
   sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s</div>', esc(spec_lab(id, l)),
           if (l == "id") sprintf("%s pasangan, rata-rata %s tetangga", NI(nrow(e)), FI(s$`Rata-rata tetangga`, 2)) else sprintf("%s pairs, %s neighbours on average", NE(nrow(e)), FE(s$`Rata-rata tetangga`, 2)),
-          svg_map(rep("#16223A", 49), sprintf("POLYID %d", col$POLYID), paste("Neighbour graph", spec_lab(id, "en")), edges = e, nodes = TRUE))
+          svg_map(rep(ARC$ns, 49), sprintf("POLYID %d", col$POLYID), paste("Neighbour graph", spec_lab(id, "en")), edges = e, nodes = TRUE))
 }, ""), collapse = ""), '</div>')
 exhibit(cells, html = TRUE,
   title = c(en = "Six of the neighbour graphs", id = "Enam graf ketetanggaan"),
@@ -319,20 +349,24 @@ bi_table(function(l) {
 
 ```{r ex-z}
 zplot <- function(l) {
-  d <- gC |> mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), sig = ifelse(signif, "sig", "ns"))
-  ggplot(d, aes(z_perm, lab, colour = index)) +
-    annotate("rect", xmin = -1.96, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = "#1A2740") +
+  d <- gC |> mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), sh = paste(index, ifelse(signif, "sig", "ns")))
+  sl <- if (l == "id") c("signifikan", "tidak signifikan") else c("significant", "not significant")
+  key <- c("Moran's I sig", "Moran's I ns", "Geary's C sig", "Geary's C ns")
+  keyl <- setNames(c(paste("Moran,", sl[1]), paste("Moran,", sl[2]), paste("Geary,", sl[1]), paste("Geary,", sl[2])), key)
+  br <- key[key %in% d$sh]   # legend shows only the kinds of point that occur
+  ggplot(d, aes(z_perm, lab, colour = sh, shape = sh, group = index)) +
+    annotate("rect", xmin = -1.96, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = PAL$band) +
     geom_vline(xintercept = 0, colour = PAL$faint, linewidth = .4) +
-    geom_point(aes(shape = sig), size = 2.6, stroke = 1.1, position = position_dodge(width = .55)) +
-    scale_shape_manual(values = c(sig = 16, ns = 1), labels = if (l == "id") c(sig = "signifikan", ns = "tidak signifikan") else c(sig = "significant", ns = "not significant"), name = NULL) +
-    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    geom_point(size = 2.6, stroke = 1.1, position = position_dodge(width = .55)) +
+    scale_shape_manual(values = setNames(c(16, 1, 17, 2), key), breaks = br, labels = keyl[br], name = NULL) +
+    scale_colour_manual(values = setNames(unname(COL_IDX[c(1, 1, 2, 2)]), key), breaks = br, labels = keyl[br], name = NULL) +
     labs(x = if (l == "id") "z permutasi berorientasi (> 0 = autokorelasi positif)" else "oriented permutation z (> 0 = positive autocorrelation)", y = NULL) +
     theme_case() + theme(panel.grid.major.y = element_blank())
 }
 exhibit(zplot, w = 9, h = 9.2,
   title = c(en = "Same data, 32 verdicts", id = "Data sama, 32 putusan"),
-  cap = c(en = sprintf("Oriented z for CRIME under every matrix. The shaded band is |z| < 1.96. Moran's I is significant under %d of 32 matrices and Geary's C under %d. None of the %d tests points to negative autocorrelation. What moves is the strength: z for Moran ranges from %s to %s.", sigM, sigG, nrow(gC), FE(min(gM$z_perm), 2), FE(max(gM$z_perm), 2)),
-          id = sprintf("z berorientasi CRIME pada setiap matriks. Pita gelap adalah |z| < 1,96. Moran's I signifikan pada %d dari 32 matriks dan Geary's C pada %d. Tidak satu pun dari %d uji menunjukkan autokorelasi negatif. Yang bergeser adalah kekuatannya: z Moran berkisar dari %s sampai %s.", sigM, sigG, nrow(gC), FI(min(gM$z_perm), 2), FI(max(gM$z_perm), 2))),
+  cap = c(en = sprintf("Oriented z for CRIME under every matrix: circles for Moran, triangles for Geary, filled when significant. The shaded band is |z| < 1.96. Moran's I is significant under %d of 32 matrices and Geary's C under %d. None of the %d tests points to negative autocorrelation. What moves is the strength: z for Moran ranges from %s to %s.", sigM, sigG, nrow(gC), FE(min(gM$z_perm), 2), FE(max(gM$z_perm), 2)),
+          id = sprintf("z berorientasi CRIME pada setiap matriks: lingkaran untuk Moran, segitiga untuk Geary, terisi bila signifikan. Pita abu-abu adalah |z| < 1,96. Moran's I signifikan pada %d dari 32 matriks dan Geary's C pada %d. Tidak satu pun dari %d uji menunjukkan autokorelasi negatif. Yang bergeser adalah kekuatannya: z Moran berkisar dari %s sampai %s.", sigM, sigG, nrow(gC), FI(min(gM$z_perm), 2), FI(max(gM$z_perm), 2))),
   alt = c(en = "Dot plot of oriented z-scores for Moran's I and Geary's C under 32 weights matrices", id = "Plot titik skor z berorientasi Moran's I dan Geary's C pada 32 matriks bobot"))
 ```
 
@@ -351,8 +385,8 @@ cplot <- function(l) {
     mutate(m = factor(m, c("es", "z_perm"), if (l == "id") c("Ukuran efek berorientasi", "z permutasi") else c("Oriented effect size", "Permutation z")),
            family = factor(family, c("KNN", "Distance band"), if (l == "id") c("k tetangga terdekat", "Ambang pita jarak d") else c("k nearest neighbours", "Distance band threshold d")))
   ggplot(d, aes(param, v, colour = index, linetype = style)) + geom_hline(yintercept = 0, colour = PAL$faint, linewidth = .3) +
-    geom_line(linewidth = .8) + geom_point(size = 1.8) + facet_grid(m ~ family, scales = "free", switch = "y") +
-    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    geom_line(linewidth = .8) + geom_point(aes(shape = index), size = 1.9, stroke = 1) + facet_grid(m ~ family, scales = "free", switch = "y") +
+    scale_colour_manual(values = COL_IDX, name = NULL) + scale_shape_manual(values = SHP_IDX, name = NULL) +
     scale_linetype_manual(values = c(B = "solid", W = "22"), labels = if (l == "id") c(B = "B (biner)", W = "W (standardisasi baris)") else c(B = "B (binary)", W = "W (row-standardised)"), name = NULL) +
     labs(x = NULL, y = NULL) + theme_case() + theme(strip.placement = "outside")
 }
@@ -406,17 +440,17 @@ zzplot <- function(l) {
   d <- aC |> mutate(fam = factor(FAM[[l]][as.character(family)], FAM[[l]]), st = sub("^.*_", "", spec_id))
   lim <- range(c(0, d$`z_perm_Moran's I`, d$`z_perm_Geary's C`)) + c(0, .4)
   ggplot(d, aes(`z_perm_Moran's I`, `z_perm_Geary's C`, colour = fam, shape = st)) +
-    annotate("rect", xmin = -Inf, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = "#1A2740") + annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 1.96, fill = "#1A2740") +
+    annotate("rect", xmin = -Inf, xmax = 1.96, ymin = -Inf, ymax = Inf, fill = PAL$band) + annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 1.96, fill = PAL$band) +
     geom_abline(slope = 1, intercept = 0, linetype = 3, colour = PAL$faint) + geom_point(size = 3, stroke = 1.1) +
-    scale_colour_manual(values = c("#FACC15", "#60A5FA", "#F472B6", "#4ADE80"), name = NULL) +
+    scale_colour_manual(values = c("#17233B", "#4A6A99", "#A3263A", "#2D6A4A"), name = NULL) +
     scale_shape_manual(values = c(B = 16, W = 1), labels = if (l == "id") c(B = "B / mentah", W = "W") else c(B = "B / raw", W = "W"), name = NULL) +
     coord_equal(xlim = lim, ylim = lim) +
     labs(x = "z Moran's I", y = if (l == "id") "z Geary's C (berorientasi)" else "z Geary's C (oriented)") + theme_case() + guides(colour = guide_legend(nrow = 2))
 }
 exhibit(zzplot, w = 7.6, h = 7.4,
   title = c(en = "The two verdicts side by side", id = "Dua putusan berdampingan"),
-  cap = c(en = sprintf("Each point is one matrix. Shaded strips are |z| < 1.96 for either index; the dotted line is equal z. Geary's z is below Moran's for %d of 32 matrices, and the gap is widest for binary distance bands and raw inverse distance, where areas with many neighbours carry most of the weight.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`)),
-          id = sprintf("Setiap titik adalah satu matriks. Pita gelap adalah |z| < 1,96 untuk salah satu indeks; garis titik-titik adalah z yang sama. z Geary lebih kecil daripada z Moran pada %d dari 32 matriks, dan selisihnya paling lebar pada pita jarak biner dan invers jarak mentah, ketika wilayah dengan banyak tetangga memikul sebagian besar bobot.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`))),
+  cap = c(en = sprintf("Each point is one matrix: colour gives the family, a filled point binary or raw weights and a hollow point row-standardised. Shaded strips are |z| < 1.96 for either index; the dotted line is equal z. Geary's z is below Moran's for %d of 32 matrices, and the gap is widest for binary distance bands and raw inverse distance, where areas with many neighbours carry most of the weight.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`)),
+          id = sprintf("Setiap titik adalah satu matriks: warna menunjukkan keluarga, titik penuh bobot biner atau mentah, titik kosong standardisasi baris. Pita abu-abu adalah |z| < 1,96 untuk salah satu indeks; garis titik-titik adalah z yang sama. z Geary lebih kecil daripada z Moran pada %d dari 32 matriks, dan selisihnya paling lebar pada pita jarak biner dan invers jarak mentah, ketika wilayah dengan banyak tetangga memikul sebagian besar bobot.", sum(aC$`z_perm_Geary's C` < aC$`z_perm_Moran's I`))),
   alt = c(en = "Scatter plot of Moran z against Geary z for 32 matrices", id = "Diagram pencar z Moran terhadap z Geary untuk 32 matriks"))
 ```
 </section>
@@ -437,8 +471,8 @@ jplot <- function(l) {
   d <- jk |> filter(ref == REF, var == "CRIME")
   ggplot(d, aes(drop_polyid, dz, colour = index)) + geom_hline(yintercept = 0, colour = PAL$faint, linewidth = .4) +
     geom_segment(aes(xend = drop_polyid, yend = 0), alpha = .55, position = position_dodge(width = .6)) +
-    geom_point(size = 1.9, position = position_dodge(width = .6)) +
-    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+    geom_point(aes(shape = index), size = 2, stroke = 1, position = position_dodge(width = .6)) +
+    scale_colour_manual(values = COL_IDX, name = NULL) + scale_shape_manual(values = SHP_IDX, name = NULL) +
     scale_x_continuous(breaks = seq(1, 49, 4)) +
     labs(x = if (l == "id") "POLYID yang dihapus" else "POLYID removed", y = if (l == "id") "Δz = z(tanpa i) − z(lengkap)" else "Δz = z(without i) − z(full)") + theme_case()
 }
@@ -459,16 +493,16 @@ Mengganti CRIME dengan peringkatnya (yang menghilangkan pengaruh nilai ekstrem) 
 </section>
 
 <section class="chap" id="local">
-<h2><span class="en">Local clusters: where the critique bites</span><span class="id">Klaster lokal: di sini kritiknya paling terasa</span></h2>
+<h2><span class="en">Local clusters and outliers: where the critique bites</span><span class="id">Klaster dan pencilan lokal: di sini kritiknya paling terasa</span></h2>
 
 ::: en
-LISA splits Moran's I into one value per area and labels each significant area High-High (a high value among high neighbours), Low-Low, High-Low or Low-High. Each area gets its own conditional permutation test, so 49 tests are run at once; at α = 0.05 about 2.5 areas would look significant by chance alone. The p-values are therefore corrected with the Benjamini–Hochberg false discovery rate (FDR).
+LISA splits Moran's I into one value per area and labels each significant area High-High (a high value among high neighbours), Low-Low, High-Low or Low-High. High-High and Low-Low areas are clusters; High-Low and Low-High areas are spatial outliers, values unlike their neighbours, and are not part of a cluster. Each area gets its own conditional permutation test, so 49 tests are run at once; at α = 0.05 about 2.5 areas would look significant by chance alone. The p-values are therefore corrected with the Benjamini–Hochberg false discovery rate (FDR).
 
 Under `r lE(REF)`, `r raw_ref` neighbourhoods have a raw p below 0.05 and `r fdr[[REF]]` remain after FDR: `r and_list(paste("POLYID", ref_sig$POLYID), "en")`.
 :::
 
 ::: id
-LISA memecah Moran's I menjadi satu nilai per wilayah dan memberi label pada setiap wilayah signifikan: High-High (nilai tinggi di antara tetangga bernilai tinggi), Low-Low, High-Low, atau Low-High. Setiap wilayah diuji dengan permutasi bersyaratnya sendiri, sehingga 49 uji dijalankan sekaligus; pada α = 0,05 sekitar 2,5 wilayah akan tampak signifikan hanya karena kebetulan. Karena itu p-value dikoreksi dengan *false discovery rate* (FDR) Benjamini–Hochberg.
+LISA memecah Moran's I menjadi satu nilai per wilayah dan memberi label pada setiap wilayah signifikan: High-High (nilai tinggi di antara tetangga bernilai tinggi), Low-Low, High-Low, atau Low-High. Wilayah High-High dan Low-Low adalah klaster; wilayah High-Low dan Low-High adalah pencilan spasial, yaitu nilai yang berbeda dari tetangganya, dan bukan bagian dari klaster. Setiap wilayah diuji dengan permutasi bersyaratnya sendiri, sehingga 49 uji dijalankan sekaligus; pada α = 0,05 sekitar 2,5 wilayah akan tampak signifikan hanya karena kebetulan. Karena itu p-value dikoreksi dengan *false discovery rate* (FDR) Benjamini–Hochberg.
 
 Pada `r lI(REF)`, `r raw_ref` lingkungan memiliki p mentah di bawah 0,05 dan `r fdr[[REF]]` tetap signifikan setelah FDR: `r and_list(paste("POLYID", ref_sig$POLYID), "id")`.
 :::
@@ -476,34 +510,35 @@ Pada `r lI(REF)`, `r raw_ref` lingkungan memiliki p mentah di bawah 0,05 dan `r 
 ```{r ex-lisa-ref}
 d <- lC |> filter(spec_id == REF) |> arrange(POLYID)
 gi <- lsupC |> arrange(POLYID)
-gcol <- c("Hot spot" = "#EF4444", "Cold spot" = "#3B82F6", "Tidak signifikan" = "#26354F")
-lcol <- c("High-High" = "#EF4444", "Low-Low" = "#3B82F6", "Other Positive" = "#FDBA74", "Negative" = "#93C5FD", "Tidak signifikan" = "#26354F")
-m1 <- svg_map(COL_LISA_D[d$class_fdr], sprintf("POLYID %d · %s · p(FDR) %s", d$POLYID, d$class_fdr, FE(d$p_fdr, 3)), "LISA cluster map of CRIME")
-m2 <- svg_map(gcol[gi$Gi_class], sprintf("POLYID %d · Gi* z %s", gi$POLYID, FE(gi$Gi_star_z, 2)), "Getis-Ord Gi star map of CRIME")
-m3 <- svg_map(ifelse(gi$localC_class %in% names(lcol), lcol[gi$localC_class], "#FDBA74"), sprintf("POLYID %d · Local Geary · %s", gi$POLYID, gi$localC_class), "Local Geary map of CRIME")
+lisa_lab <- function(l) unname(LISA_LAB[[l]][names(COL_LISA)])
+m1 <- svg_map(COL_LISA[d$class_fdr], sprintf("POLYID %d · %s · p(FDR) %s", d$POLYID, d$class_fdr, FE(d$p_fdr, 3)), "LISA map of CRIME: clusters and outliers")
+m2 <- svg_map(COL_GI[gi$Gi_class], sprintf("POLYID %d · Gi* z %s", gi$POLYID, FE(gi$Gi_star_z, 2)), "Getis-Ord Gi star map of CRIME")
+m3 <- svg_map(COL_LC[gi$localC_class], sprintf("POLYID %d · Local Geary · %s", gi$POLYID, gi$localC_class), "Local Geary map of CRIME")
+nL <- table(factor(d$class_fdr, names(COL_LISA))); nG <- table(factor(gi$Gi_class, names(COL_GI))); nC <- table(factor(gi$localC_class, names(COL_LC)))
 ex <- function(l) {
   ns <- if (l == "id") "Tidak signifikan" else "Not significant"
   paste0('<div class="maps m3">',
-    sprintf('<div class="mapcell"><h4>LISA</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Moran lokal, FDR 5%" else "Local Moran, FDR 5%", m1,
-            legend_html(COL_LISA_D, c("High-High", "Low-Low", "High-Low", "Low-High", ns))),
+    sprintf('<div class="mapcell"><h4>LISA</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Moran lokal, Queen · W, FDR 5%" else "Local Moran, Queen · W, FDR 5%", m1,
+            legend_count(COL_LISA, lisa_lab(l), nL, if (l == "id") "Kelas LISA" else "LISA class")),
     sprintf('<div class="mapcell"><h4>Getis–Ord G<sub>i</sub>*</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Queen biner dengan diri sendiri, FDR 5%" else "Binary Queen including self, FDR 5%", m2,
-            legend_html(gcol, c("Hot spot", "Cold spot", ns))),
-    sprintf('<div class="mapcell"><h4>Local Geary</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Queen · W, FDR 5%" else "Queen · W, FDR 5%", m3,
-            legend_html(c("#EF4444", "#3B82F6", "#FDBA74", "#26354F"), c("High-High", "Low-Low", if (l == "id") "Lainnya" else "Other", ns))),
+            legend_count(COL_GI, c("Hot spot", "Cold spot", ns), nG, if (l == "id") "Kelas Gi*" else "Gi* class")),
+    sprintf('<div class="mapcell"><h4>Local Geary</h4><p class="sub">%s</p>%s%s</div>', "Queen · W, FDR 5%", m3,
+            legend_count(COL_LC, if (l == "id") c("Tinggi-Tinggi", "Rendah-Rendah", "Positif lain", "Negatif", ns) else c("High-High", "Low-Low", "Other positive", "Negative", ns), nC,
+                         if (l == "id") "Kelas Local Geary" else "Local Geary class")),
     '</div>')
 }
 exhibit(ex, html = TRUE,
   title = c(en = "Three local statistics, one reference matrix", id = "Tiga statistik lokal, satu matriks acuan"),
-  cap = c(en = sprintf("Gi* marks %d hot spots (%s) and %d cold spots; Local Geary flags %d areas. The three tools ask slightly different questions, but they point at the same part of the city. Hover for values.", length(gi_hot), and_list(gi_hot, "en"), length(gi_cold), lc_sig),
-          id = sprintf("Gi* menandai %d hot spot (%s) dan %d cold spot; Local Geary menandai %d wilayah. Ketiga alat mengajukan pertanyaan yang sedikit berbeda, tetapi menunjuk bagian kota yang sama. Arahkan kursor untuk melihat nilainya.", length(gi_hot), and_list(gi_hot, "id"), length(gi_cold), lc_sig)))
+  cap = c(en = sprintf("Gi* marks %d hot spots (%s) and %d cold spots; Local Geary flags %d areas. Red always means high values among high neighbours and blue low among low, but each legend counts its own method's classes. Local Geary's \"other positive\" (similar values that are neither clearly high nor clearly low) and \"negative\" (a value unlike its neighbours) are kept apart. The three tools point at the same part of the city. Hover for values.", length(gi_hot), and_list(gi_hot, "en"), length(gi_cold), lc_sig),
+          id = sprintf("Gi* menandai %d hot spot (%s) dan %d cold spot; Local Geary menandai %d wilayah. Merah selalu berarti nilai tinggi di antara tetangga tinggi dan biru nilai rendah di antara tetangga rendah, tetapi setiap legenda menghitung kelas metodenya sendiri. Kelas \"positif lain\" pada Local Geary (nilai mirip yang tidak jelas tinggi atau rendah) dan \"negatif\" (nilai yang berbeda dari tetangganya) dipisahkan. Ketiga alat menunjuk bagian kota yang sama. Arahkan kursor untuk melihat nilainya.", length(gi_hot), and_list(gi_hot, "id"), length(gi_cold), lc_sig)))
 ```
 
 ::: en
-That map is the one most reports would print. The next exhibit prints the same statistic, on the same data, under six other matrices.
+That map is the one most reports would print. The next figure prints the same statistic, on the same data, under six other matrices.
 :::
 
 ::: id
-Peta itulah yang biasanya dicetak dalam laporan. Bukti berikut mencetak statistik yang sama, pada data yang sama, dengan enam matriks lain.
+Peta itulah yang biasanya dicetak dalam laporan. Gambar berikut mencetak statistik yang sama, pada data yang sama, dengan enam matriks lain.
 :::
 
 ```{r ex-lisa-multi}
@@ -513,20 +548,43 @@ cellsL <- function(l) paste0('<div class="maps m3">', paste0(vapply(pick6, funct
   d <- lC |> filter(spec_id == id) |> arrange(POLYID)
   sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s</div>', esc(spec_lab(id, l)),
           if (l == "id") sprintf("%d signifikan (FDR), %d dengan p mentah", fdr[[id]], raw_n[[id]]) else sprintf("%d significant (FDR), %d by raw p", fdr[[id]], raw_n[[id]]),
-          svg_map(COL_LISA_D[d$class_fdr], sprintf("POLYID %d · %s", d$POLYID, d$class_fdr), paste("LISA map of CRIME,", spec_lab(id, "en"))))
-}, ""), collapse = ""), '</div>', legend_html(COL_LISA_D, c("High-High", "Low-Low", "High-Low", "Low-High", if (l == "id") "Tidak signifikan" else "Not significant")))
+          svg_map(COL_LISA[d$class_fdr], sprintf("POLYID %d · %s", d$POLYID, d$class_fdr), paste("LISA map of CRIME,", spec_lab(id, "en"))))
+}, ""), collapse = ""), '</div>', legend_html(COL_LISA, lisa_lab(l), if (l == "id") "Kelas LISA, FDR 5%" else "LISA class, FDR 5%"))
 exhibit(cellsL, html = TRUE,
   title = c(en = "Same statistic, six other maps", id = "Statistik sama, enam peta lain"),
-  cap = c(en = sprintf("LISA for CRIME, FDR 5%%, under six alternative matrices. Across all 32, the number of significant neighbourhoods ranges from %d to %d, and %d matrices find none. Moran's global test is significant under %d of those same 32 matrices: a significant global index does not guarantee a single significant local cluster.", min(fdr), max(fdr), n_zero, sigM),
-          id = sprintf("LISA untuk CRIME, FDR 5%%, dengan enam matriks alternatif. Di antara ke-32 matriks, jumlah lingkungan signifikan berkisar dari %d sampai %d, dan %d matriks tidak menemukan satu pun. Uji global Moran signifikan pada %d dari 32 matriks yang sama: indeks global yang signifikan tidak menjamin ada satu pun klaster lokal yang signifikan.", min(fdr), max(fdr), n_zero, sigM)))
+  cap = c(en = sprintf("LISA for CRIME, FDR 5%%, under six alternative matrices, drawn at the same scale and extent as the reference map. Across all 32, the number of significant neighbourhoods ranges from %d to %d, and %d matrices find none. Moran's global test is significant under %d of those same 32 matrices: a significant global index does not guarantee a single significant local cluster.", min(fdr), max(fdr), n_zero, sigM),
+          id = sprintf("LISA untuk CRIME, FDR 5%%, dengan enam matriks alternatif, digambar dengan skala dan cakupan yang sama dengan peta acuan. Di antara ke-32 matriks, jumlah lingkungan signifikan berkisar dari %d sampai %d, dan %d matriks tidak menemukan satu pun. Uji global Moran signifikan pada %d dari 32 matriks yang sama: indeks global yang signifikan tidak menjamin ada satu pun klaster lokal yang signifikan.", min(fdr), max(fdr), n_zero, sigM)))
+```
+
+```{r ex-sig-stab}
+# left: how strong the evidence is under the reference matrix (smallest FDR p darkest);
+# right: under how many of the 32 matrices each neighbourhood is significant (FDR 5%)
+dR <- lC |> filter(spec_id == REF) |> arrange(POLYID)
+band <- cut(dR$p_fdr, c(-Inf, .001, .01, .05, Inf), labels = FALSE)
+sig_lab <- function(l) c(paste("p ≤", FL(.001, 3, l)), paste("p ≤", FL(.01, 2, l)), paste("p ≤", FL(.05, 2, l)), if (l == "id") "Tidak signifikan" else "Not significant")
+kk <- ever_sig$k[match(dR$POLYID, ever_sig$POLYID)]; nW <- nrow(specs)
+stab_cut <- c(-1, 0, 8, 16, nW - 1, nW); stab_col <- c(ARC$ns, "#C9D3E0", "#8DA2C0", "#4A6A99", "#17233B")
+sb <- cut(kk, stab_cut, labels = FALSE)
+stab_lab <- function(l) if (l == "id") c("Tidak pernah", "1–8 matriks", "9–16 matriks", paste0("17–", nW - 1, " matriks"), paste("Semua", nW)) else c("Never", "1–8 matrices", "9–16 matrices", paste0("17–", nW - 1, " matrices"), paste("All", nW))
+mS <- svg_map(unname(COL_SIG)[band], sprintf("POLYID %d · p(FDR) %s", dR$POLYID, FE(dR$p_fdr, 3)), "LISA significance map of CRIME")
+mT <- svg_map(stab_col[sb], sprintf("POLYID %d · significant under %d of %d matrices", dR$POLYID, kk, nW), "Stability of LISA significance across matrices")
+exhibit(function(l) paste0('<div class="maps m2">',
+    sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Signifikansi" else "Significance", paste0(spec_lab(REF, l), ", FDR"), mS,
+            legend_count(unname(COL_SIG), sig_lab(l), tabulate(band, 4), if (l == "id") "p LISA setelah FDR" else "LISA p after FDR")),
+    sprintf('<div class="mapcell"><h4>%s</h4><p class="sub">%s</p>%s%s</div>', if (l == "id") "Stabilitas" else "Stability", if (l == "id") sprintf("Signifikan (FDR 5%%) pada berapa dari %d matriks", nW) else sprintf("Significant (FDR 5%%) under how many of %d matrices", nW), mT,
+            legend_count(stab_col, stab_lab(l), tabulate(sb, 5), if (l == "id") "Jumlah matriks" else "Number of matrices")),
+    '</div>'), html = TRUE,
+  title = c(en = "How strong, and how stable", id = "Seberapa kuat, dan seberapa stabil"),
+  cap = c(en = sprintf("Left: the FDR-corrected p of each neighbourhood under %s; the smallest p is the darkest. Right: the number of matrices under which the neighbourhood is significant. %d neighbourhoods are significant under at least one matrix, %d under all %d.", lE(REF), n_ever, n_always, nW),
+          id = sprintf("Kiri: p terkoreksi FDR setiap lingkungan pada %s; p terkecil paling gelap. Kanan: jumlah matriks yang membuat lingkungan itu signifikan. %d lingkungan signifikan pada setidaknya satu matriks, %d pada ke-%d matriks.", lI(REF), n_ever, n_always, nW)))
 ```
 
 ```{r ex-grid}
 gplot <- function(l) {
   d <- lC |> left_join(select(specs, spec_id = id, order), by = "spec_id") |>
-    mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), cl = factor(class_fdr, names(COL_LISA_D)))
-  ggplot(d, aes(factor(POLYID), lab, fill = cl)) + geom_tile(colour = PAL$bg, linewidth = .5) +
-    scale_fill_manual(values = COL_LISA_D, drop = FALSE, labels = c(HH = "High-High", LL = "Low-Low", HL = "High-Low", LH = "Low-High", NS = if (l == "id") "Tidak signifikan" else "Not significant"), name = NULL) +
+    mutate(lab = factor(spec_lab(spec_id, l), rev(spec_lab(gM$spec_id, l))), cl = factor(class_fdr, names(COL_LISA)))
+  ggplot(d, aes(factor(POLYID), lab, fill = cl)) + geom_tile(colour = PAL$bg, linewidth = .5, show.legend = TRUE) +
+    scale_fill_manual(values = COL_LISA, drop = FALSE, labels = LISA_LAB[[l]], name = NULL) +
     labs(x = "POLYID", y = NULL) + theme_case(11.5) + theme(panel.grid = element_blank(), axis.text.x = element_text(size = 7.5))
 }
 exhibit(gplot, w = 10, h = 8.2,
@@ -595,11 +653,13 @@ bi_table(function(l) {
 ```{r ex-rewire}
 rplot <- function(l) {
   d <- data.frame(I = rw[, 1])
-  ref <- data.frame(x = c(obs["queen_B", "I"], od["I"], -1 / 48),
-                    k = if (l == "id") c("Queen asli", "Queen dengan wᵢᵢ = 1", "E(I) tanpa pola") else c("Queen as built", "Queen with wᵢᵢ = 1", "E(I) with no pattern"))
-  ggplot(d, aes(I)) + geom_histogram(bins = 40, fill = "#3A4D6E", colour = PAL$bg, linewidth = .2) +
-    geom_vline(data = ref, aes(xintercept = x, colour = k), linewidth = 1.1) +
-    scale_colour_manual(values = setNames(c(PAL$accent, PAL$pos, PAL$muted), ref$k), name = NULL) +
+  ref <- data.frame(x = c(obs["queen_B", "I"], od["I"], -1 / 48), k = factor(c("orig", "diag", "ei"), c("orig", "diag", "ei")))
+  lbl <- if (l == "id") c(orig = "Queen asli", diag = expression("Queen dengan " * w[ii] == 1), ei = "E(I) tanpa pola")
+         else c(orig = "Queen as built", diag = expression("Queen with " * w[ii] == 1), ei = "E(I) with no pattern")
+  ggplot(d, aes(I)) + geom_histogram(bins = 40, fill = RAMP_VAL[3], colour = PAL$bg, linewidth = .2) +
+    geom_vline(data = ref, aes(xintercept = x, colour = k, linetype = k), linewidth = 1.1) +
+    scale_colour_manual(values = c(orig = ARC$moran, diag = ARC$maroon, ei = ARC$faint), labels = lbl, name = NULL) +
+    scale_linetype_manual(values = c(orig = "solid", diag = "42", ei = "13"), labels = lbl, name = NULL) +
     labs(x = if (l == "id") "Moran's I CRIME dengan tetangga Queen yang diacak (999 kali)" else "Moran's I of CRIME with rewired Queen neighbours (999 times)",
          y = if (l == "id") "Frekuensi" else "Count") + theme_case()
 }
@@ -699,16 +759,22 @@ bi_table(function(l) {
 splot <- function(l) {
   d <- size |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W[order(match(crit$W, gM$spec_id))], l)))) |>
     pivot_longer(c(`Size Moran`, `Size Geary`), names_to = "ix", values_to = "s") |> mutate(ix = sub("Size ", "", ix))
-  ggplot(d, aes(s, lab, colour = ix)) + annotate("rect", xmin = .025, xmax = .075, ymin = -Inf, ymax = Inf, fill = "#16352A") +
-    geom_vline(xintercept = .05, linetype = 2, colour = PAL$faint) + geom_point(size = 2.4, position = position_dodge(width = .5)) +
-    scale_colour_manual(values = c(Moran = PAL$moran, Geary = PAL$geary), name = NULL) +
+  ggplot(d, aes(s, lab, colour = ix, shape = ix)) + annotate("rect", xmin = .025, xmax = .075, ymin = -Inf, ymax = Inf, fill = ARC$ok_band) +
+    geom_vline(xintercept = .05, linetype = 2, colour = PAL$faint) + geom_point(size = 2.4, stroke = 1, position = position_dodge(width = .5)) +
+    scale_colour_manual(values = c(Moran = ARC$moran, Geary = ARC$geary), name = NULL) + scale_shape_manual(values = c(Moran = 16, Geary = 2), name = NULL) +
     scale_x_continuous(limits = c(0, .1)) +
-    labs(x = if (l == "id") "Proporsi H₀ ditolak tanpa pola (K1)" else "Share of H₀ rejected with no pattern (K1)", y = NULL) + theme_case() + theme(panel.grid.major.y = element_blank())
+    labs(x = if (l == "id") expression("Proporsi " * H[0] * " ditolak tanpa pola (K1)") else expression("Share of " * H[0] * " rejected with no pattern (K1)"), y = NULL) + theme_case() + theme(panel.grid.major.y = element_blank())
+}
+k1_msg <- function(l) {
+  if (!length(k1_bad) && !length(k1C_bad))
+    return(if (l == "id") "Ke-32 matriks lolos K1 untuk Moran's I maupun Geary's C." else "All 32 matrices pass K1 for both Moran's I and Geary's C.")
+  sprintf(if (l == "id") "Moran's I gagal K1 pada %s; Geary's C pada %s." else "Moran's I fails K1 under %s; Geary's C under %s.",
+          and_list(spec_lab(k1_bad, l), l), and_list(spec_lab(k1C_bad, l), l))
 }
 exhibit(splot, w = 8.6, h = 8.6,
   title = c(en = "K1: false alarms when there is nothing to find", id = "K1: alarm palsu saat tidak ada yang dicari"),
-  cap = c(en = sprintf("Test size from %s replicates with no spatial pattern. The green band is Bradley's acceptable range. Moran's I fails K1 under %s; Geary's C under %s.", NE(R0), and_list(spec_lab(k1_bad, "en"), "en"), and_list(spec_lab(k1C_bad, "en"), "en")),
-          id = sprintf("Ukuran uji dari %s ulangan tanpa pola spasial. Pita hijau adalah rentang wajar Bradley. Moran's I gagal K1 pada %s; Geary's C pada %s.", NI(R0), and_list(spec_lab(k1_bad, "id"), "id"), and_list(spec_lab(k1C_bad, "id"), "id"))),
+  cap = c(en = sprintf("Test size from %s replicates with no spatial pattern. The green band is Bradley's acceptable range. %s", NE(R0), k1_msg("en")),
+          id = sprintf("Ukuran uji dari %s ulangan tanpa pola spasial. Pita hijau adalah rentang wajar Bradley. %s", NI(R0), k1_msg("id"))),
   alt = c(en = "Dot plot of test size for 32 matrices", id = "Plot titik ukuran uji untuk 32 matriks"))
 ```
 
@@ -717,10 +783,10 @@ gplotR <- function(l) {
   d <- crit |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W, l)))) |>
     select(lab, Kelas, `K3 penyesalan maks Moran`, `K3 penyesalan maks Geary`) |>
     pivot_longer(starts_with("K3"), names_to = "ix", values_to = "r") |> mutate(ix = ifelse(grepl("Moran", ix), "Moran's I", "Geary's C"))
-  ggplot(d, aes(r, lab, colour = ix)) +
-    annotate("rect", xmin = -Inf, xmax = .15, ymin = -Inf, ymax = Inf, fill = "#143024") + annotate("rect", xmin = .30, xmax = Inf, ymin = -Inf, ymax = Inf, fill = "#3A1C24") +
-    geom_line(aes(group = lab), colour = PAL$faint, linewidth = .4) + geom_point(size = 2.5) +
-    scale_colour_manual(values = c("Moran's I" = PAL$moran, "Geary's C" = PAL$geary), name = NULL) +
+  ggplot(d, aes(r, lab, colour = ix, shape = ix)) +
+    annotate("rect", xmin = -Inf, xmax = .15, ymin = -Inf, ymax = Inf, fill = ARC$ok_band) + annotate("rect", xmin = .30, xmax = Inf, ymin = -Inf, ymax = Inf, fill = ARC$bad_band) +
+    geom_line(aes(group = lab), colour = PAL$faint, linewidth = .4) + geom_point(size = 2.5, stroke = 1) +
+    scale_colour_manual(values = COL_IDX, name = NULL) + scale_shape_manual(values = SHP_IDX, name = NULL) +
     labs(x = if (l == "id") "Penyesalan maksimum (K3): daya yang hilang dibanding matriks terbaik, skenario terburuk" else "Maximum regret (K3): power lost against the best matrix, worst scenario", y = NULL) +
     theme_case() + theme(panel.grid.major.y = element_blank())
 }
@@ -749,16 +815,16 @@ bi_table(function(l) {
 hplot <- function(l) {
   d <- alt |> filter(level == 0.50) |> mutate(lab = factor(spec_lab(W, l), rev(spec_lab(crit$W, l))), g = factor(gen, GEN))
   ggplot(d, aes(g, lab, fill = pow_I)) + geom_tile(colour = PAL$bg, linewidth = .6) +
-    geom_text(aes(label = FL(pow_I, 2, l)), size = 3.1, colour = ifelse(d$pow_I > .45, "#0A101C", PAL$text), family = PF) +
-    scale_fill_gradient(low = "#17243B", high = "#FACC15", limits = c(0, 1), name = if (l == "id") "Daya" else "Power") +
+    geom_text(aes(label = FL(pow_I, 2, l)), size = 3.1, colour = ink_on(seq_col(d$pow_I)), family = PF) +
+    scale_fill_gradientn(colours = SEQ_RAMP, limits = c(0, 1), name = if (l == "id") "Daya" else "Power") +
     scale_x_discrete(labels = if (l == "id") c(G1 = "G1 SAR Queen", G2 = "G2 SAR k = 4", G3 = "G3 SAR pita", G4 = "G4 Geostatistik", G5 = "G5 Tren radial")
                               else c(G1 = "G1 SAR Queen", G2 = "G2 SAR k = 4", G3 = "G3 SAR band", G4 = "G4 Geostatistical", G5 = "G5 Radial trend")) +
     labs(x = NULL, y = NULL) + theme_case(11.5) + theme(panel.grid = element_blank(), legend.key.width = unit(1.4, "cm"))
 }
 exhibit(hplot, w = 9, h = 9.4,
   title = c(en = "Power of Moran's I at medium strength", id = "Daya Moran's I pada kekuatan sedang"),
-  cap = c(en = "Each column is a process calibrated so that the best matrix reaches power 0.50. A robust matrix stays reasonably bright in every column; a sensitive one wins in one column and goes dark in another.",
-          id = "Setiap kolom adalah proses yang dikalibrasi sehingga matriks terbaik mencapai daya 0,50. Matriks robust tetap cukup terang di setiap kolom; matriks sensitif unggul di satu kolom dan gelap di kolom lain."),
+  cap = c(en = "Each column is a process calibrated so that the best matrix reaches power 0.50. Darker means more power. A robust matrix stays reasonably dark in every column; a sensitive one wins in one column and fades in another.",
+          id = "Setiap kolom adalah proses yang dikalibrasi sehingga matriks terbaik mencapai daya 0,50. Makin gelap, makin besar dayanya. Matriks robust tetap cukup gelap di setiap kolom; matriks sensitif unggul di satu kolom dan memudar di kolom lain."),
   alt = c(en = "Heatmap of power for 32 matrices and 5 processes", id = "Peta panas daya untuk 32 matriks dan 5 proses"))
 ```
 
@@ -767,17 +833,18 @@ pick <- unique(c(head(crit$W, 3), tail(crit$W, 3), REF))
 pcurve <- function(l) {
   d <- alt |> filter(W %in% pick) |> mutate(lab = factor(spec_lab(W, l), spec_lab(pick, l)),
     g = factor(gen, GEN, if (l == "id") c("G1 SAR Queen", "G2 SAR k = 4", "G3 SAR pita", "G4 Geostatistik", "G5 Tren radial") else c("G1 SAR Queen", "G2 SAR k = 4", "G3 SAR band", "G4 Geostatistical", "G5 Radial trend")))
-  ggplot(d, aes(level, pow_I, colour = lab)) + geom_abline(slope = 1, intercept = 0, linetype = 3, colour = PAL$faint) +
-    geom_line(linewidth = .8) + geom_point(size = 1.6) + facet_wrap(~g, nrow = 1) +
-    scale_colour_manual(values = c("#4ADE80", "#86EFAC", "#BBF7D0", "#FCA5A5", "#F87171", "#DC2626", "#FACC15")[seq_along(pick)], name = NULL) +
+  ggplot(d, aes(level, pow_I, colour = lab, shape = lab, linetype = lab)) + geom_abline(slope = 1, intercept = 0, linetype = 3, colour = PAL$faint) +
+    geom_line(linewidth = .8) + geom_point(size = 1.7) + facet_wrap(~g, nrow = 1) +
+    scale_colour_manual(values = CUR_COL[seq_along(pick)], name = NULL) + scale_shape_manual(values = CUR_SHP[seq_along(pick)], name = NULL) +
+    scale_linetype_manual(values = CUR_LTY[seq_along(pick)], name = NULL) +
     scale_x_continuous(breaks = LVL, labels = FL(LVL, 1, l)) + coord_equal() +
     labs(x = if (l == "id") "Daya matriks terbaik" else "Power of the best matrix", y = if (l == "id") "Daya" else "Power") +
-    theme_case(11) + guides(colour = guide_legend(nrow = 2))
+    theme_case(11) + theme(panel.spacing.x = unit(1.1, "lines")) + guides(colour = guide_legend(nrow = 2))
 }
 exhibit(pcurve, w = 10, h = 4.6,
   title = c(en = "Power curves: the three most robust, the three most sensitive, and Queen · W", id = "Kurva daya: tiga paling robust, tiga paling sensitif, dan Queen · W"),
-  cap = c(en = "The dotted diagonal is the best matrix. The vertical gap to it is the regret. Green lines stay close to it in every panel; red lines fall away in at least one.",
-          id = "Diagonal titik-titik adalah matriks terbaik. Jarak vertikal ke garis itu adalah penyesalan. Garis hijau tetap dekat di setiap panel; garis merah menjauh setidaknya pada satu panel."),
+  cap = c(en = "The dotted diagonal is the best matrix. The vertical gap to it is the regret. Green solid lines stay close to it in every panel; red dashed lines fall away in at least one. Queen · W is the dark dotted line.",
+          id = "Diagonal titik-titik adalah matriks terbaik. Jarak vertikal ke garis itu adalah penyesalan. Garis hijau utuh tetap dekat di setiap panel; garis merah putus-putus menjauh setidaknya pada satu panel. Queen · W adalah garis gelap titik-titik."),
   alt = c(en = "Power curves by generating process for seven matrices", id = "Kurva daya per proses pembangkit untuk tujuh matriks"))
 ```
 
@@ -835,6 +902,34 @@ Pola di balik peringkat ini: matriks di tengah (bobot yang meluruh halus seperti
 <li><strong><span class="en">Read Moran and Geary together.</span><span class="id">Baca Moran dan Geary bersama-sama.</span></strong><span class="en">When they disagree, look for extreme clustered values or a signal near the threshold before reporting either one.</span><span class="id">Bila keduanya tidak sepakat, periksa nilai ekstrem yang mengelompok atau sinyal yang dekat ambang sebelum melaporkan salah satunya.</span></li>
 <li><strong><span class="en">Report the Monte Carlo uncertainty of p near 0.05.</span><span class="id">Laporkan ketidakpastian Monte Carlo pada p di sekitar 0,05.</span></strong><span class="en">A permutation p of 0.048 with a standard error of 0.002 is not a clear rejection.</span><span class="id">p permutasi 0,048 dengan galat baku 0,002 bukan penolakan yang tegas.</span></li>
 </ul>
+
+<div class="closing">
+<h3><span class="en">What this means for burglaries and vehicle thefts in Columbus</span><span class="id">Artinya bagi pencurian rumah dan kendaraan di Columbus</span></h3>
+
+::: en
+CRIME is one number per neighbourhood: residential burglaries and vehicle thefts **combined**, per 1,000 households, in 1980. It does not separate the two kinds of theft, and it is a rate, not a count of incidents.
+
+The global answer holds: neighbourhoods with high theft rates sit next to other high-rate neighbourhoods. Moran's I is significant under `r sigM` of `r nrow(specs)` matrices and never points to negative autocorrelation.
+
+The local answer is a range, and it is three different counts. A neighbourhood is *significant* when its local Moran statistic survives 5% FDR correction. A *cluster* is made of High-High or Low-Low neighbourhoods; here a cluster group means High-High (or Low-Low) neighbourhoods linked through Queen contiguity to others of the same class. High-Low and Low-High neighbourhoods are *spatial outliers*, not cluster members. None of the three counts says how many thefts happened.
+
+Under `r lE(REF)`, `r local_txt(REF, "en")`. `r if (length(hh_ref)) sprintf("The High-High neighbourhoods (POLYID %s) average %s thefts per 1,000 households, against %s for all 49.", and_list(hh_ref, "en"), FE(hh_mean, 1), FE(city_mean, 1)) else ""` Under the recommended `r lE(rec_id)`, `r local_txt(rec_id, "en")`. Across all `r nrow(specs)` matrices the number of significant neighbourhoods runs from `r min(fdr)` to `r max(fdr)`; of these, High-High neighbourhoods run from `r min(cls_all$HH)` to `r max(cls_all$HH)`, Low-Low from `r min(cls_all$LL)` to `r max(cls_all$LL)`, and outliers from `r min(cls_all$OUT)` to `r max(cls_all$OUT)`. `r n_half` `r if (n_half == 1) "neighbourhood is" else "neighbourhoods are"` significant under at least half of the matrices`r if (n_half) paste0(" (POLYID ", and_list(half_ids, "en"), ")") else ""`.
+
+A defensible sentence for Columbus in 1980 is therefore: combined burglary and vehicle-theft rates were spatially clustered, with a High-High cluster in neighbourhoods near the central business district`r if (!is.na(hh_cbd_pct)) sprintf(" (under %s every High-High neighbourhood is among the %s%% of neighbourhoods closest to it, by DISCBD)", lE(REF), FE(hh_cbd_pct, 0)) else ""`. How many neighbourhoods are flagged High-High depends on the definition of neighbour (`r min(cls_all$HH)` to `r max(cls_all$HH)` across the `r nrow(specs)` matrices), so it is reported as a range; the wider range of `r min(fdr)` to `r max(fdr)` also counts outliers and is not the size of that cluster.
+:::
+
+::: id
+CRIME adalah satu angka per lingkungan: pencurian rumah dan pencurian kendaraan **digabung**, per 1.000 rumah tangga, tahun 1980. Angka ini tidak memisahkan kedua jenis pencurian, dan merupakan tingkat (rate), bukan jumlah kejadian.
+
+Jawaban global bertahan: lingkungan dengan tingkat pencurian tinggi bertetangga dengan lingkungan yang tingkatnya juga tinggi. Moran's I signifikan pada `r sigM` dari `r nrow(specs)` matriks dan tidak pernah menunjuk autokorelasi negatif.
+
+Jawaban lokal berupa rentang, dan terdiri atas tiga hitungan yang berbeda. Lingkungan disebut *signifikan* bila statistik Moran lokalnya bertahan setelah koreksi FDR 5%. *Klaster* terdiri atas lingkungan Tinggi-Tinggi atau Rendah-Rendah; di sini kelompok klaster berarti lingkungan Tinggi-Tinggi (atau Rendah-Rendah) yang tersambung lewat ketetanggaan Queen dengan lingkungan berkelas sama. Lingkungan Tinggi-Rendah dan Rendah-Tinggi adalah *pencilan spasial*, bukan anggota klaster. Tidak satu pun dari ketiga hitungan itu menyatakan berapa banyak pencurian yang terjadi.
+
+Pada `r lI(REF)`, `r local_txt(REF, "id")`. `r if (length(hh_ref)) sprintf("Lingkungan Tinggi-Tinggi (POLYID %s) rata-rata mencatat %s pencurian per 1.000 rumah tangga, dibanding %s untuk ke-49 lingkungan.", and_list(hh_ref, "id"), FI(hh_mean, 1), FI(city_mean, 1)) else ""` Dengan matriks rekomendasi `r lI(rec_id)`, `r local_txt(rec_id, "id")`. Di antara ke-`r nrow(specs)` matriks, jumlah lingkungan signifikan berkisar dari `r min(fdr)` sampai `r max(fdr)`; di dalamnya, lingkungan Tinggi-Tinggi berkisar dari `r min(cls_all$HH)` sampai `r max(cls_all$HH)`, Rendah-Rendah dari `r min(cls_all$LL)` sampai `r max(cls_all$LL)`, dan pencilan dari `r min(cls_all$OUT)` sampai `r max(cls_all$OUT)`. Sebanyak `r n_half` lingkungan signifikan pada setidaknya separuh matriks`r if (n_half) paste0(" (POLYID ", and_list(half_ids, "id"), ")") else ""`.
+
+Kalimat yang dapat dipertanggungjawabkan untuk Columbus tahun 1980 adalah: tingkat gabungan pencurian rumah dan kendaraan mengelompok secara spasial, dengan klaster Tinggi-Tinggi di lingkungan dekat pusat bisnis kota`r if (!is.na(hh_cbd_pct)) sprintf(" (pada %s, setiap lingkungan Tinggi-Tinggi termasuk %s%% lingkungan yang paling dekat ke pusat bisnis, menurut DISCBD)", lI(REF), FI(hh_cbd_pct, 0)) else ""`. Berapa lingkungan yang ditandai Tinggi-Tinggi bergantung pada definisi tetangga (`r min(cls_all$HH)` sampai `r max(cls_all$HH)` di antara ke-`r nrow(specs)` matriks), sehingga dilaporkan sebagai rentang; rentang `r min(fdr)` sampai `r max(fdr)` yang lebih lebar ikut menghitung pencilan dan bukan ukuran klaster itu.
+:::
+</div>
 </section>
 
 <section class="chap" id="limits">
