@@ -119,4 +119,7 @@ Berkas Columbus berasal dari distribusi GeoDa/SAL (metadata identik dengan <http
 
 ## Penulis
 
-Febrianggi Caesar Immanuel, Statistika, Universitas Padjadjaran.
+- Febrianggi Caesar Immanuel, Statistika, Universitas Padjadjaran.
+- Rayyan Ilyas Fadani
+- Gregorius Adiyatma Pradana
+- Bijan Ramadhan Aditri

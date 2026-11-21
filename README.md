@@ -117,6 +117,9 @@ The Columbus files come from the GeoDa/SAL distribution (metadata identical to <
 - Moran, P. A. P. (1950). Notes on continuous stochastic phenomena. *Biometrika, 37*(1/2), 17–23.
 - Ord, J. K., & Getis, A. (1995). Local spatial autocorrelation statistics. *Geographical Analysis, 27*(4), 286–306.
 
-## Author
+## Authors
 
-Febrianggi Caesar Immanuel, Statistics, Universitas Padjadjaran.
+- Febrianggi Caesar Immanuel, Statistics, Universitas Padjadjaran.
+- Rayyan Ilyas Fadani
+- Gregorius Adiyatma Pradana
+- Bijan Ramadhan Aditri
