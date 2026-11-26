@@ -38,17 +38,19 @@ This project measures how far the results move when only the definition of neigh
 10. Limits
 11. How to reproduce, references and the R session
 
-## Dashboard
+## How to read the dashboard
 
-Open `dashboard_html/index.html` in any browser. It works offline, needs no R or server, and contains:
+Open `dashboard_html/index.html` (or serve the repository root locally; see **How to run locally and reproduce** below). English is the default; use the **EN / ID** toggle in the header or append `?lang=id` to switch to Bahasa Indonesia. A single weights-matrix selector in the toolbar updates every analytical view simultaneously (it hides automatically on **Methods**).
 
-- the critique and the evidence above, computed from the results;
-- results for any of the 32 weights matrices (Moran's I, Geary's C, permutation tests, effect sizes);
-- CRIME map and local clusters (LISA, Local Geary, Getis–Ord Gi*);
-- sensitivity curves and the full 32-matrix table;
-- the robustness simulation: robust vs sensitive matrices, power by pattern, and the diagonal vs placement tests.
-
-English is the default. Use the language switch in the header, or open `index.html?lang=id`, for Bahasa Indonesia.
+| Tab | What it shows | How to use it |
+|---|---|---|
+| **LISA comparison** | Side-by-side Columbus CRIME cluster map comparing the reference **Queen · W** matrix against your selected matrix | Switch matrices in the toolbar to see neighbourhoods change cluster class live (hover or click any neighbourhood to inspect its local Moran statistic across both maps). |
+| **Local maps** | Local spatial indicators for the selected matrix: LISA, Local Geary, and Getis-Ord Gi* | Compare which neighbourhoods remain significant hotspots after 5% Benjamini-Hochberg FDR correction across local methods. |
+| **Matrix results** | Global Moran's I, Geary's C, 9,999-permutation p-values, z-scores, and effect sizes for the active matrix | Check whether the chosen matrix shifts the magnitude of spatial autocorrelation even when direction stays positive. |
+| **Sensitivity** | Sensitivity curves across all 32 weights matrices | Spot how far Moran's I (`0.153` to `0.607`) and Geary's C (`0.325` to `0.846`) move as neighbour definitions change. |
+| **Simulation** | Robustness simulation across 5 known spatial patterns (1.6 million tests) | Compare robust vs sensitive matrices (such as **1/d · W** vs **k = 2** and wide distance bands) and power by pattern. |
+| **Methods** | Diagonal vs placement computational checks and design summary | Verify why the matrix diagonal must stay zero and why neighbour identity (not label order) drives the statistics. |
+| **Tables & downloads** | Sortable 32-matrix comparison table with the selected matrix pinned at the top | Sort by any column to compare matrices directly, or click **Download comparison table (CSV)** to export the full table. |
 
 ## Repository structure
 
@@ -81,7 +83,24 @@ English is the default. Use the language switch in the header, or open `index.ht
 - **Robustness simulation:** the real CRIME values are rearranged on the map following five known processes (SAR on Queen, k = 4 and a distance band; a geostatistical process; a radial trend). Pattern strength is calibrated so that the best matrix reaches the same power for every process. 25,000 datasets × 32 matrices × 2 indices = 1.6 million tests. Criteria (test size, mean power, maximum regret, worst-case power, Moran–Geary agreement) and class thresholds were fixed before running the simulation.
 - **Diagonal vs placement:** computational tests show the results depend on *which* regions are neighbours, not on region labels; the diagonal must be zero (a non-zero diagonal inflates Moran's I).
 
-## Reproduce
+## How to run locally and reproduce
+
+### 1. Open the site, dashboard, and report locally
+
+Serve the repository root over HTTP so links between the landing page, dashboard, and report work as published:
+
+```bash
+python -m http.server 8000
+```
+
+Then open:
+- http://localhost:8000 (landing page)
+- http://localhost:8000/dashboard_html/ (interactive dashboard; add `?lang=id` for Bahasa Indonesia)
+- http://localhost:8000/reports/Columbus_Spatial_Analysis.html (bilingual HTML report)
+
+Stop the server with `Ctrl+C`. Both `dashboard_html/index.html` and `reports/Columbus_Spatial_Analysis.html` are also self-contained and can be opened offline directly from disk.
+
+### 2. Re-run the R analysis from scratch
 
 Requirements: R ≥ 4.3 with `sf`, `spdep` (≥ 1.3), `spData`, `dplyr`, `tidyr`, `ggplot2`, `patchwork`, `jsonlite`, `knitr`, `rmarkdown`, `scales`, and Pandoc (bundled with RStudio).
 
@@ -99,6 +118,7 @@ Run this from the repository root, or press **Knit** in RStudio (the Rmd sends t
 Rscript tests/validate_outputs.R                       # 106 checks on tables, JSON, RDS, figures and report
 Rscript tests/check_reproducibility.R <run_a> <run_b>  # two independent knits must match byte for byte
 python tests/test_html_dashboard.py . <screenshot_dir> # dashboard vs CSV, both languages, keyboard, mobile (Playwright)
+python tests/check_site.py                             # verifies landing page, dashboard and report links
 ```
 
 Set `CHROME_PATH` to use a specific Chrome binary for the browser test.

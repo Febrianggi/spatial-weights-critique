@@ -38,17 +38,19 @@ Proyek ini mengukur seberapa jauh hasil bergeser bila yang diganti hanya definis
 10. Keterbatasan
 11. Cara reproduksi, referensi, dan sesi R
 
-## Dashboard
+## Cara membaca dashboard
 
-Buka `dashboard_html/index.html` di browser apa pun. Dashboard berjalan offline, tidak butuh R atau server, dan berisi:
+Buka `dashboard_html/index.html` (atau jalankan server lokal dari folder utama repositori; lihat bagian **Cara menjalankan di lokal dan reproduksi** di bawah). Bahasa Inggris adalah bawaan; gunakan tombol **EN / ID** di header atau tambahkan `?lang=id` untuk bahasa Indonesia. Satu pemilih matriks bobot di bilah kontrol menyinkronkan seluruh tab analitis secara otomatis (disembunyikan pada tab **Metode**).
 
-- kritik dan bukti di atas, dihitung dari hasil analisis;
-- hasil untuk setiap 32 matriks bobot (Moran's I, Geary's C, uji permutasi, ukuran efek);
-- peta CRIME dan klaster lokal (LISA, Local Geary, Getis–Ord Gi*);
-- kurva sensitivitas dan tabel lengkap 32 matriks;
-- simulasi robustness: matriks robust vs sensitif, daya per pola, serta uji diagonal vs letak.
-
-Bahasa Inggris adalah bawaan. Gunakan tombol bahasa di header, atau buka `index.html?lang=id`, untuk bahasa Indonesia.
+| Tab | Isi utama | Cara memakai |
+|---|---|---|
+| **Perbandingan LISA** | Peta klaster CRIME Columbus berdampingan antara acuan **Queen · W** dan matriks pilihan | Ganti matriks di bilah kontrol untuk melihat perubahan kelas klaster tiap wilayah secara langsung (arahkan kursor atau klik wilayah untuk membandingkan nilai LISA-nya). |
+| **Peta lokal** | Indikator spasial lokal untuk matriks terpilih: LISA, Local Geary, dan Getis-Ord Gi* | Bandingkan wilayah mana yang tetap signifikan sebagai hotspot setelah koreksi FDR Benjamini-Hochberg 5% di tiap metode lokal. |
+| **Hasil matriks** | Moran's I global, Geary's C, p-value 9.999 permutasi, skor-z, dan ukuran efek untuk matriks aktif | Lihat seberapa jauh besar autokorelasi spasial bergeser walau arah pengelompokannya tetap positif. |
+| **Sensitivitas** | Kurva sensitivitas pada seluruh 32 matriks bobot | Amati rentang pergeseran Moran's I (`0,153` sampai `0,607`) dan Geary's C (`0,325` sampai `0,846`) saat definisi tetangga diubah. |
+| **Simulasi** | Simulasi robustness pada 5 pola spasial yang diketahui (1,6 juta uji) | Bandingkan matriks yang robust vs sensitif (seperti **1/d · W** dibanding **k = 2** dan pita jarak lebar) serta daya uji per pola. |
+| **Metode** | Uji komputasi diagonal vs letak serta ringkasan rancangan | Lihat bukti mengapa diagonal matriks wajib nol dan mengapa struktur tetangga (bukan urutan label) yang menentukan statistik. |
+| **Tabel & unduhan** | Tabel perbandingan 32 matriks yang bisa diurutkan dengan matriks aktif disematkan di baris teratas | Urutkan kolom mana saja untuk membandingkan matriks, atau klik **Unduh tabel perbandingan (CSV)** untuk menyimpan tabel lengkapnya. |
 
 ## Struktur repositori
 
@@ -81,7 +83,24 @@ Bahasa Inggris adalah bawaan. Gunakan tombol bahasa di header, atau buka `index.
 - **Simulasi robustness:** nilai CRIME yang asli disusun ulang di peta mengikuti lima proses yang diketahui (SAR dengan Queen, k = 4, dan pita jarak; proses geostatistik; tren radial). Kekuatan pola dikalibrasi agar matriks terbaik mencapai daya yang sama untuk setiap proses. 25.000 kumpulan data × 32 matriks × 2 indeks = 1,6 juta uji. Kriteria (ukuran uji, daya rata-rata, penyesalan maksimum, daya terburuk, kesepakatan Moran–Geary) dan batas kelas ditetapkan sebelum simulasi dijalankan.
 - **Diagonal vs letak:** uji komputasi menunjukkan hasil bergantung pada wilayah *mana* yang bertetangga, bukan pada label wilayah; diagonal wajib nol (diagonal yang tidak nol menggelembungkan Moran's I).
 
-## Reproduksi
+## Cara menjalankan di lokal dan reproduksi
+
+### 1. Membuka situs, dashboard, dan laporan di lokal
+
+Jalankan server HTTP lokal dari folder utama repositori agar tautan antara halaman pembuka, dashboard, dan laporan berjalan penuh:
+
+```bash
+python -m http.server 8000
+```
+
+Lalu buka:
+- http://localhost:8000 (halaman pembuka)
+- http://localhost:8000/dashboard_html/?lang=id (dashboard interaktif bahasa Indonesia; hapus `?lang=id` untuk bahasa Inggris)
+- http://localhost:8000/reports/Columbus_Spatial_Analysis.html?lang=id (laporan HTML dua bahasa)
+
+Hentikan server dengan `Ctrl+C`. Baik `dashboard_html/index.html` maupun `reports/Columbus_Spatial_Analysis.html` juga bersifat mandiri dan bisa dibuka offline langsung dari disk.
+
+### 2. Menjalankan ulang analisis R dari awal
 
 Kebutuhan: R ≥ 4.3 dengan `sf`, `spdep` (≥ 1.3), `spData`, `dplyr`, `tidyr`, `ggplot2`, `patchwork`, `jsonlite`, `knitr`, `rmarkdown`, `scales`, serta Pandoc (sudah termasuk di RStudio).
 
@@ -99,6 +118,7 @@ Jalankan dari folder utama repositori, atau tekan **Knit** di RStudio (Rmd mengi
 Rscript tests/validate_outputs.R                       # pemeriksaan tabel, JSON, RDS, grafik, dan laporan
 Rscript tests/check_reproducibility.R <run_a> <run_b>  # dua knit independen harus identik byte per byte
 python tests/test_html_dashboard.py . <screenshot_dir> # dashboard vs CSV, dua bahasa, keyboard, mobile (Playwright)
+python tests/check_site.py                             # memeriksa tautan halaman pembuka, dashboard, dan laporan
 ```
 
 Atur `CHROME_PATH` untuk memakai Chrome tertentu pada uji browser.
